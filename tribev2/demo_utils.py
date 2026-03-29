@@ -191,6 +191,7 @@ class TribeModel(TribeExperiment):
             Path(cache_folder).mkdir(parents=True, exist_ok=True)
         if device == "auto":
             device = "cuda" if torch.cuda.is_available() else "cpu"
+        checkpoint_dir_str = str(checkpoint_dir)
         checkpoint_dir = Path(checkpoint_dir)
         if checkpoint_dir.exists():
             config_path = checkpoint_dir / "config.yaml"
@@ -198,7 +199,7 @@ class TribeModel(TribeExperiment):
         else:
             from huggingface_hub import hf_hub_download
 
-            repo_id = str(checkpoint_dir)
+            repo_id = checkpoint_dir_str
             config_path = hf_hub_download(repo_id, "config.yaml")
             ckpt_path = hf_hub_download(repo_id, checkpoint_name)
         with open(config_path, "r") as f:

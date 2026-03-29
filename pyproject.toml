@@ -14,9 +14,9 @@ authors = [{name = "Meta Platforms, Inc."}]
 dependencies = [
   "neuralset==0.0.2",
   "neuraltrain==0.0.2",
-  "torch>=2.5.1,<2.7",
+  "torch>=2.5.1",
   "numpy==2.2.6",
-  "torchvision>=0.20,<0.22",
+  "torchvision>=0.20",
   "x_transformers==1.27.20",
   "einops",
   "pyyaml",

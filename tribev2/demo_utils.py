@@ -190,7 +190,12 @@ class TribeModel(TribeExperiment):
         if cache_folder is not None:
             Path(cache_folder).mkdir(parents=True, exist_ok=True)
         if device == "auto":
-            device = "cuda" if torch.cuda.is_available() else "cpu"
+            if torch.cuda.is_available():
+                device = "cuda"
+            elif torch.backends.mps.is_available():
+                device = "mps"
+            else:
+                device = "cpu"
         checkpoint_dir = Path(checkpoint_dir)
         if checkpoint_dir.exists():
             config_path = checkpoint_dir / "config.yaml"
@@ -238,6 +243,17 @@ class TribeModel(TribeExperiment):
         model.to(device)
         model.eval()
         xp._model = model
+        # Propagate device to feature extractors (and nested sub-extractors)
+        for modality in xp.data.features_to_use:
+            extractor = getattr(xp.data, f"{modality}_feature", None)
+            if extractor is not None:
+                if hasattr(extractor, "device"):
+                    extractor.device = device
+                # Handle nested extractors (e.g. HuggingFaceVideo.image)
+                for field in extractor.model_fields:
+                    sub = getattr(extractor, field, None)
+                    if hasattr(sub, "device"):
+                        sub.device = device
         return xp
 
     def get_events_dataframe(

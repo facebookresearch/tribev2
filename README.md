@@ -49,6 +49,28 @@ pip install -e ".[plotting]"
 pip install -e ".[training]"
 ```
 
+## Running on Apple Silicon (macOS)
+
+TRIBE v2 works on Apple Silicon Macs (M1–M4). The model runs on CPU for inference (MPS support is limited for some operations). A few notes:
+
+- **whisperx** (used for audio transcription) does not support MPS so it automatically falls back to CPU with `int8` compute.
+- **Multiprocessing**: macOS defaults to the `spawn` start method, which conflicts with PyTorch DataLoaders. Use `fork` and wrap your code in `if __name__ == "__main__"`:
+
+```python
+import multiprocessing
+from tribev2 import TribeModel
+
+if __name__ == "__main__":
+    multiprocessing.set_start_method("fork")
+
+    model = TribeModel.from_pretrained("facebook/tribev2", cache_folder="./cache", device="cpu")
+    df = model.get_events_dataframe(video_path="path/to/video.mp4")
+    preds, segments = model.predict(events=df)
+    print(preds.shape)  # (n_timesteps, n_vertices)
+```
+
+- **First run** is slow (feature extraction for LLaMA 3.2, V-JEPA2, Wav2Vec-BERT). Extracted features are cached in `cache_folder`, so subsequent runs on the same video are near-instant.
+
 ## Training a model from scratch
 
 ### 1. Set environment variables

@@ -7,7 +7,7 @@ name = "tribev2"
 version = "0.1.0"
 description = "Deep multimodal brain encoding"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 license = {file = "LICENSE"}
 authors = [{name = "Meta Platforms, Inc."}]
 

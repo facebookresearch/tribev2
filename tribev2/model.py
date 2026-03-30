@@ -42,7 +42,7 @@ class TemporalSmoothing(BaseModelConfig):
             kernel = gaussian_kernel_1d(kernel_size=self.kernel_size, sigma=self.sigma)
             kernel = kernel.repeat(dim, 1, 1)
             conv.weight.data = kernel
-            conv.requires_grad = False
+            conv.requires_grad_(False)
         return conv
 
 

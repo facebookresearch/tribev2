@@ -220,6 +220,12 @@ class TribeModel(TribeExperiment):
         config["cache_folder"] = (
             str(cache_folder) if cache_folder is not None else "./cache"
         )
+        if device in ("cpu", "mps"):  # mps not supported by neuralset extractors
+            # Override all extractor devices to cpu when cuda is unavailable
+            for modality in ["text", "audio"]:
+                config[f"data.{modality}_feature.device"] = "cpu"
+            config["data.image_feature.image.device"] = "cpu"
+            config["data.video_feature.image.device"] = "cpu"
         if config_update is not None:
             config.update(config_update)
         xp = cls(**config)

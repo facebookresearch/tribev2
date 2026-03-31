@@ -101,9 +101,12 @@ class FmriEncoderModel(nn.Module):
         self.n_outputs = n_outputs
         self.n_output_timesteps = n_output_timesteps
         self.projectors = nn.ModuleDict()
+        self.projector_output_dims: dict[str, int] = {}
         self.pooler = nn.AdaptiveAvgPool1d(n_output_timesteps)
         hidden = config.hidden
         for modality, tup in feature_dims.items():
+            output_dim = self._get_projector_output_dim(modality)
+            self.projector_output_dims[modality] = output_dim
             if tup is None:
                 logger.warning(
                     "%s has no feature dimensions. Skipping projector.", modality
@@ -115,11 +118,6 @@ class FmriEncoderModel(nn.Module):
                 feature_dim * num_layers
                 if config.layer_aggregation == "cat"
                 else feature_dim
-            )
-            output_dim = (
-                hidden // len(feature_dims)
-                if config.extractor_aggregation == "cat"
-                else hidden
             )
             self.projectors[modality] = self.config.projector.build(
                 input_dim, output_dim
@@ -160,6 +158,11 @@ class FmriEncoderModel(nn.Module):
     def device(self) -> torch.device:
         return next(self.parameters()).device
 
+    def _get_projector_output_dim(self, _modality: str) -> int:
+        if self.config.extractor_aggregation == "cat":
+            return self.config.hidden // len(self.feature_dims)
+        return self.config.hidden
+
     def forward(self, batch: SegmentData, pool_outputs: bool = True) -> torch.Tensor:
         x = self.aggregate_features(batch)  # B, T, H
         subject_id = batch.data.get("subject_id", None)
@@ -188,8 +191,12 @@ class FmriEncoderModel(nn.Module):
         for modality in self.feature_dims.keys():
             if modality not in self.projectors or modality not in batch.data:
                 data = torch.zeros(
-                    B, T, self.config.hidden // len(self.feature_dims)
-                ).to(x.device)
+                    B,
+                    T,
+                    self.projector_output_dims[modality],
+                    device=x.device,
+                    dtype=torch.float32,
+                )
             else:
                 data = batch.data[modality]  # B, L, H, T
                 data = data.to(torch.float32)

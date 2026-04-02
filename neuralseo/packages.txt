@@ -1,0 +1,5 @@
+git
+ffmpeg
+libsndfile1
+libsndfile1-dev
+libportaudio2

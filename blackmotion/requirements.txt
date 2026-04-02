@@ -1,0 +1,40 @@
+# ============================================================
+# WARDOGZ NEURO-UGC — Dépendances Hugging Face Space
+# ============================================================
+# ⚠️ IMPORTANT : tribev2 n'est PAS sur PyPI.
+# Il s'installe depuis le repo officiel GitHub de Meta Research.
+# ============================================================
+
+# Modèle Meta Tribe v2 (depuis GitHub — obligatoire)
+git+https://github.com/facebookresearch/tribev2.git
+
+# Interface Gradio
+gradio>=4.0.0
+
+# Deep Learning
+torch
+numpy
+
+# Visualisation
+matplotlib
+Pillow
+
+# Analyse vidéo (détection durée dynamique)
+moviepy
+
+# Hugging Face (auth + téléchargement modèle)
+huggingface_hub
+
+# Données
+pandas
+
+# Atlas neurologique (mapping vertices → régions corticales Destrieux)
+nilearn
+nibabel
+
+# ============================================================
+# NOTE : Les dépendances audio/texte de Tribe v2
+# (Wav2Vec-BERT, LLaMA 3.2, V-JEPA2) sont installées
+# automatiquement par le package tribev2 lui-même via uv.
+# Ne pas les ajouter ici pour éviter les conflits de version.
+# ============================================================

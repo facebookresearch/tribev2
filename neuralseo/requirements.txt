@@ -1,0 +1,36 @@
+# ── Torch: tribev2 requires >=2.5.1,<2.7 — pin to 2.6.0 (ZeroGPU compatible)
+torch==2.6.0
+torchvision==0.21.0
+
+# ── numpy: tribev2 pins this exactly ────────────────────────────────────────
+numpy==2.2.6
+
+# ── tribev2 and its explicit deps (pulled from its pyproject.toml) ───────────
+git+https://github.com/facebookresearch/tribev2.git
+neuralset==0.0.2
+neuraltrain==0.0.2
+x_transformers==1.27.20
+einops
+pyyaml
+moviepy>=2.2.1
+gtts
+langdetect
+spacy
+soundfile
+Levenshtein
+julius
+https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl
+
+# ── Whisper: real speech-to-text with word-level timestamps (replaces uvx whisperx)
+faster-whisper>=1.1.0
+
+# ── Our app deps ─────────────────────────────────────────────────────────────
+parallel-web>=0.4.2
+google-genai>=1.0.0
+transformers>=4.44.0
+pandas>=2.2.0
+scipy>=1.13.0
+matplotlib>=3.9.0
+plotly>=5.22.0
+python-dotenv>=1.0.0
+Pillow>=10.3.0

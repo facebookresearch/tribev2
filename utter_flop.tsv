@@ -1,0 +1,36 @@
+text	start	duration	sequence_id	sentence
+Here's	0.051	0.12000000000000002	0	 Here's an AI tool that finds the exact GPS coordinates in under three minutes without any landmarks, without any metadata.
+an	0.211	0.060000000000000026	0	 Here's an AI tool that finds the exact GPS coordinates in under three minutes without any landmarks, without any metadata.
+AI	0.351	0.14	0	 Here's an AI tool that finds the exact GPS coordinates in under three minutes without any landmarks, without any metadata.
+tool	0.511	0.14	0	 Here's an AI tool that finds the exact GPS coordinates in under three minutes without any landmarks, without any metadata.
+that	0.671	0.09999999999999998	0	 Here's an AI tool that finds the exact GPS coordinates in under three minutes without any landmarks, without any metadata.
+finds	0.791	0.20099999999999996	0	 Here's an AI tool that finds the exact GPS coordinates in under three minutes without any landmarks, without any metadata.
+the	1.012	0.08000000000000007	0	 Here's an AI tool that finds the exact GPS coordinates in under three minutes without any landmarks, without any metadata.
+exact	1.152	0.3400000000000001	0	 Here's an AI tool that finds the exact GPS coordinates in under three minutes without any landmarks, without any metadata.
+GPS	1.572	0.41999999999999993	0	 Here's an AI tool that finds the exact GPS coordinates in under three minutes without any landmarks, without any metadata.
+coordinates	2.012	0.3999999999999999	0	 Here's an AI tool that finds the exact GPS coordinates in under three minutes without any landmarks, without any metadata.
+in	2.452	0.08000000000000007	0	 Here's an AI tool that finds the exact GPS coordinates in under three minutes without any landmarks, without any metadata.
+under	2.673	0.20000000000000018	0	 Here's an AI tool that finds the exact GPS coordinates in under three minutes without any landmarks, without any metadata.
+three	2.913	0.2200000000000002	0	 Here's an AI tool that finds the exact GPS coordinates in under three minutes without any landmarks, without any metadata.
+minutes	3.173	0.2599999999999998	0	 Here's an AI tool that finds the exact GPS coordinates in under three minutes without any landmarks, without any metadata.
+without	3.513	0.26000000000000023	0	 Here's an AI tool that finds the exact GPS coordinates in under three minutes without any landmarks, without any metadata.
+any	3.873	0.17999999999999972	0	 Here's an AI tool that finds the exact GPS coordinates in under three minutes without any landmarks, without any metadata.
+landmarks,	4.153	0.4610000000000003	0	 Here's an AI tool that finds the exact GPS coordinates in under three minutes without any landmarks, without any metadata.
+without	4.634	0.23999999999999932	0	 Here's an AI tool that finds the exact GPS coordinates in under three minutes without any landmarks, without any metadata.
+any	4.934	0.1200000000000001	0	 Here's an AI tool that finds the exact GPS coordinates in under three minutes without any landmarks, without any metadata.
+metadata.	5.134	0.5800000000000001	0	 Here's an AI tool that finds the exact GPS coordinates in under three minutes without any landmarks, without any metadata.
+Just	5.914	0.14000000000000057	1	Just upload the image.
+upload	6.114	0.2809999999999997	1	Just upload the image.
+the	6.415	0.05999999999999961	1	Just upload the image.
+image.	6.515	0.22000000000000064	1	Just upload the image.
+This	7.255	0.17999999999999972	2	This tool is called Netflix and it works in two stages.
+tool	7.535	0.21999999999999975	2	This tool is called Netflix and it works in two stages.
+is	8.136	0.0600000000000005	2	This tool is called Netflix and it works in two stages.
+called	8.236	0.1999999999999993	2	This tool is called Netflix and it works in two stages.
+Netflix	8.616	0.33999999999999986	2	This tool is called Netflix and it works in two stages.
+and	9.336	0.0600000000000005	2	This tool is called Netflix and it works in two stages.
+it	9.456	0.040000000000000924	2	This tool is called Netflix and it works in two stages.
+works	9.516	0.22100000000000009	2	This tool is called Netflix and it works in two stages.
+in	9.777	0.0600000000000005	2	This tool is called Netflix and it works in two stages.
+two	9.877	0.1399999999999988	2	This tool is called Netflix and it works in two stages.
+stages.	10.057	0.3200000000000003	2	This tool is called Netflix and it works in two stages.

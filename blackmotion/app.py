@@ -7,10 +7,10 @@ import datetime
 import functools
 
 # ============================================================
-# WARDOGZ NEURO-UGC v2 — SETUP SYSTÈME
+# WARDOGZ NEURO-UGC v2 — SYSTEM SETUP
 # ============================================================
 
-print("🔧 Setup Wardogz Brain Scanner v2...")
+print("Setup Wardogz Brain Scanner v2...")
 
 os.system("curl -LsSf https://astral.sh/uv/install.sh | sh")
 
@@ -39,9 +39,9 @@ if hf_token:
             pass
     from huggingface_hub import login
     login(token=hf_token, add_to_git_credential=False)
-    print("✅ Auth Meta OK")
+    print("Meta Auth OK")
 else:
-    print("⚠️ HF_TOKEN manquant")
+    print("WARNING: HF_TOKEN missing")
 
 # ============================================================
 # IMPORTS
@@ -58,10 +58,10 @@ from PIL import Image
 
 if torch.cuda.is_available():
     torch.set_float32_matmul_precision('high')
-    print(f"⚡ GPU : {torch.cuda.get_device_name(0)}")
+    print(f"GPU: {torch.cuda.get_device_name(0)}")
 
 # ============================================================
-# CHARGEMENT MODÈLE
+# MODEL LOADING
 # ============================================================
 
 CACHE_DIR      = "./cache/tribev2"
@@ -72,91 +72,92 @@ pathlib.Path(THUMBNAILS_DIR).mkdir(parents=True, exist_ok=True)
 try:
     from tribev2 import TribeModel
     model = TribeModel.from_pretrained("facebook/tribev2", cache_folder=CACHE_DIR)
-    status_msg = "✅ Brain Scanner v2 Opérationnel"
+    status_msg = "Brain Scanner v2 Operational"
     print(status_msg)
 except Exception as e:
     model = None
-    status_msg = f"❌ Erreur chargement : {str(e)}"
+    status_msg = f"Loading error: {str(e)}"
     print(status_msg)
 
+
 # ============================================================
-# MATRICE NEUROLOGIQUE — DÉFINITION DES ROI
+# NEUROLOGICAL MATRIX — ROI DEFINITIONS
 #
-# Tribe v2 prédit sur ~20 484 vertices corticaux (fsaverage5).
-# On mappe ces vertices sur des zones fonctionnelles via l'atlas
-# Destrieux (nilearn). 6 métriques clés pour l'audit pub :
+# Tribe v2 predicts on ~20,484 cortical vertices (fsaverage5).
+# We map these vertices to functional areas via the Destrieux
+# atlas (nilearn). 6 key metrics for ad auditing:
 #
-#  Mémorisation     → parahippocampal + cingulaire postérieur
-#  Plaisir/Dopamine → orbitofrontal + vmPFC
-#  Stress/Anxiété   → insula + cingulaire antérieur
-#  Attention visuelle→ cortex occipital + cuneus
-#  Résonance sociale → TPJ + sulcus temporal supérieur
-#  Impact audio     → gyrus de Heschl + temporal supérieur
+#  Memorability     -> parahippocampal + posterior cingulate
+#  Pleasure/Dopamine -> orbitofrontal + vmPFC
+#  Stress/Anxiety   -> insula + anterior cingulate
+#  Visual Attention -> occipital cortex + cuneus
+#  Social Resonance -> TPJ + superior temporal sulcus
+#  Audio Impact     -> Heschl's gyrus + superior temporal
 # ============================================================
 
-# Labels Destrieux → chaque ROI est une liste de patterns à matcher
+# Destrieux labels -> each ROI is a list of patterns to match
 ROI_DESTRIEUX = {
-    "memorisation": [
+    "memorability": [
         "parahippocampal", "cingul-Mid-Post", "cingul-Post"
     ],
-    "plaisir_dopamine": [
+    "pleasure_dopamine": [
         "Orbital", "orbital", "rectus", "frontomargin"
     ],
-    "stress_anxiete": [
+    "stress_anxiety": [
         "insular", "circular_insula", "cingul-Ant"
     ],
-    "attention_visuelle": [
+    "visual_attention": [
         "occipital", "cuneus", "calcarine", "Pole_occipital"
     ],
-    "resonance_sociale": [
+    "social_resonance": [
         "pariet_inf-Angular", "temporal_sup", "temporo_pariet"
     ],
-    "impact_audio": [
+    "audio_impact": [
         "G_T_transv", "temp_sup-Lateral", "temp_sup-Plan"
     ],
 }
 
-# Labels UI pour l'affichage
+# UI labels for display
 ROI_LABELS = {
-    "memorisation":      "🧠 Mémorisation",
-    "plaisir_dopamine":  "💊 Plaisir / Dopamine",
-    "stress_anxiete":    "😰 Stress / Anxiété",
-    "attention_visuelle":"👁️ Attention Visuelle",
-    "resonance_sociale": "🤝 Résonance Sociale",
-    "impact_audio":      "🎵 Impact Audio",
+    "memorability":       "Memorability",
+    "pleasure_dopamine":  "Pleasure / Dopamine",
+    "stress_anxiety":     "Stress / Anxiety",
+    "visual_attention":   "Visual Attention",
+    "social_resonance":   "Social Resonance",
+    "audio_impact":       "Audio Impact",
 }
 
-# Interprétations de chaque métrique selon le niveau
+# Interpretations for each metric by level
 ROI_INTERPRETATIONS = {
-    "memorisation": {
-        "haut":   "Pub mémorable — message ancré dans la mémoire épisodique",
-        "moyen":  "Mémorisation partielle — renforcer le logo/slogan",
-        "bas":    "Faible rétention — retravailler la signature de marque",
+    "memorability": {
+        "high":   "Memorable ad — message anchored in episodic memory",
+        "medium": "Partial memorability — reinforce the logo/slogan",
+        "low":    "Low retention — rework the brand signature",
     },
-    "plaisir_dopamine": {
-        "haut":   "Fort plaisir anticipatoire — contenu désirable",
-        "moyen":  "Plaisir modéré — ajouter un élément de récompense visuelle",
-        "bas":    "Peu de dopamine générée — tester une récompense narrative",
+    "pleasure_dopamine": {
+        "high":   "Strong anticipatory pleasure — desirable content",
+        "medium": "Moderate pleasure — add a visual reward element",
+        "low":    "Little dopamine generated — try a narrative reward",
     },
-    "stress_anxiete": {
-        "haut":   "Contenu anxiogène — attention à l'effet repoussoir",
-        "moyen":  "Tension narrative contrôlée — peut être intentionnel",
-        "bas":    "Atmosphère sereine — adapté aux marques de confiance",
+    "stress_anxiety": {
+        "high":   "Anxiety-inducing content — watch for repellent effect",
+        "medium": "Controlled narrative tension — may be intentional",
+        "low":    "Serene atmosphere — suited for trust-based brands",
     },
-    "attention_visuelle": {
-        "haut":   "Visuellement très captivant — direction artistique efficace",
-        "moyen":  "Attention visuelle standard — enrichir la composition",
-        "bas":    "Stimulation visuelle faible — plus de mouvement ou couleur",
+    "visual_attention": {
+        "high":   "Visually captivating — effective art direction",
+        "medium": "Standard visual attention — enrich the composition",
+        "low":    "Weak visual stimulation — add more movement or color",
     },
-    "resonance_sociale": {
-        "haut":   "Fort sentiment d'identification — audience captivée",
-        "moyen":  "Empathie partielle — humaniser davantage le contenu",
-        "bas":    "Peu d'identification — ajouter des visages/personnages",
+    "social_resonance": {
+        "high":   "Strong sense of identification — audience captivated",
+        "medium": "Partial empathy — humanize the content further",
+        "low":    "Low identification — add faces/characters",
     },
-    "impact_audio": {
-        "haut":   "Bande-son très efficace — musique/voix bien traitées",
-        "moyen":  "Audio correct — optimiser la musique ou le ton de voix",
-        "bas":    "Impact audio faible — retravailler le sound design",
+    "audio_impact": {
+        "high":   "Highly effective soundtrack — music/voice well crafted",
+        "medium": "Decent audio — optimize the music or voice tone",
+        "low":    "Weak audio impact — rework the sound design",
     },
 }
 
@@ -164,15 +165,13 @@ ROI_INTERPRETATIONS = {
 @functools.lru_cache(maxsize=1)
 def get_roi_masks(n_vertices: int):
     """
-    Charge les masques de vertices pour chaque ROI via nilearn (Destrieux atlas).
-    Mis en cache après le premier appel.
-    Retourne un dict {roi_name: np.array(bool, shape=(n_vertices,))} ou None si nilearn absent.
+    Load vertex masks for each ROI via nilearn (Destrieux atlas).
+    Cached after the first call.
+    Returns a dict {roi_name: np.array(bool, shape=(n_vertices,))} or None if nilearn is missing.
     """
     try:
         from nilearn import datasets
-        print("📡 Chargement atlas Destrieux (nilearn)...")
-        # fetch_atlas_surf_destrieux retourne fsaverage5 par défaut.
-        # Le paramètre 'mesh' n'existe pas dans les versions récentes de nilearn.
+        print("Loading Destrieux atlas (nilearn)...")
         destrieux    = datasets.fetch_atlas_surf_destrieux(verbose=0)
         labels_lh    = np.array(destrieux.map_left)    # (10242,)
         labels_rh    = np.array(destrieux.map_right)   # (10242,)
@@ -180,53 +179,53 @@ def get_roi_masks(n_vertices: int):
 
         masks = {}
         for roi_name, patterns in ROI_DESTRIEUX.items():
-            # Trouver les indices de labels qui matchent les patterns
+            # Find label indices that match the patterns
             matched_idx = set()
             for i, name in enumerate(label_names):
                 if any(p.lower() in name.lower() for p in patterns):
                     matched_idx.add(i)
 
             if not matched_idx:
-                print(f"⚠️ ROI '{roi_name}' — aucun label Destrieux trouvé")
+                print(f"WARNING: ROI '{roi_name}' — no Destrieux label found")
                 continue
 
             mask_lh   = np.isin(labels_lh, list(matched_idx))
             mask_rh   = np.isin(labels_rh, list(matched_idx))
             full_mask = np.concatenate([mask_lh, mask_rh])  # (20484,)
 
-            # Adapter à la taille réelle de preds si différente
+            # Adapt to actual preds size if different
             if len(full_mask) > n_vertices:
                 full_mask = full_mask[:n_vertices]
             elif len(full_mask) < n_vertices:
                 full_mask = np.pad(full_mask, (0, n_vertices - len(full_mask)))
 
             masks[roi_name] = full_mask
-            print(f"  ✅ {ROI_LABELS[roi_name]} : {full_mask.sum()} vertices")
+            print(f"  {ROI_LABELS[roi_name]}: {full_mask.sum()} vertices")
 
         return masks if masks else None
 
     except ImportError:
-        print("⚠️ nilearn non disponible — fallback sur découpage uniforme")
+        print("WARNING: nilearn not available — falling back to uniform split")
         return None
     except Exception as e:
-        print(f"⚠️ Erreur ROI masks : {e} — fallback sur découpage uniforme")
+        print(f"WARNING: ROI masks error: {e} — falling back to uniform split")
         return None
 
 
 def get_roi_masks_fallback(n_vertices: int):
     """
-    Fallback si nilearn absent : découpage uniforme du cortex en 6 zones.
-    Approximation anatomique grossière mais fonctionnelle.
-    Les zones correspondent à des régions connues sur fsaverage5 :
-    - Occipital (post) → visuel
-    - Temporal → audio / social
-    - Pariétal → social / mémoire
-    - Frontal inf → dopamine / orbitofrontal
-    - Insula (aprox) → stress
-    - Cingulaire (aprox) → mémoire
+    Fallback if nilearn is absent: uniform cortex split into 6 zones.
+    Rough anatomical approximation but functional.
+    Zones correspond to known regions on fsaverage5:
+    - Occipital (posterior) -> visual
+    - Temporal -> audio / social
+    - Parietal -> social / memory
+    - Inferior frontal -> dopamine / orbitofrontal
+    - Insula (approx) -> stress
+    - Cingulate (approx) -> memory
     """
     half = n_vertices // 2
-    q    = half // 6  # taille d'un sextant par hémisphère
+    q    = half // 6  # size of one sextant per hemisphere
 
     def bilateral(start_frac, end_frac):
         s_lh = int(half * start_frac)
@@ -239,35 +238,35 @@ def get_roi_masks_fallback(n_vertices: int):
         return m
 
     return {
-        "memorisation":       bilateral(0.70, 0.85),
-        "plaisir_dopamine":   bilateral(0.00, 0.20),
-        "stress_anxiete":     bilateral(0.40, 0.55),
-        "attention_visuelle": bilateral(0.80, 1.00),
-        "resonance_sociale":  bilateral(0.55, 0.70),
-        "impact_audio":       bilateral(0.25, 0.40),
+        "memorability":       bilateral(0.70, 0.85),
+        "pleasure_dopamine":  bilateral(0.00, 0.20),
+        "stress_anxiety":     bilateral(0.40, 0.55),
+        "visual_attention":   bilateral(0.80, 1.00),
+        "social_resonance":   bilateral(0.55, 0.70),
+        "audio_impact":       bilateral(0.25, 0.40),
     }
 
 
 def compute_brain_matrix(preds: np.ndarray) -> dict:
     """
-    Calcule les 6 métriques neurologiques à partir des prédictions fMRI brutes.
-    preds shape : (n_timesteps, n_vertices)
-    Retourne dict {roi_name: score_0_100}
+    Compute the 6 neurological metrics from raw fMRI predictions.
+    preds shape: (n_timesteps, n_vertices)
+    Returns dict {roi_name: score_0_100}
 
-    Normalisation : z-score inter-ROI.
-    On compare l'activation de chaque ROI aux autres ROIs (pas au range global).
-    score=50 → activation dans la moyenne cérébrale
-    score>70 → ROI significativement plus active que les autres
-    score<30 → ROI moins active que la moyenne
+    Normalization: cross-ROI z-score.
+    Each ROI's activation is compared to other ROIs (not the global range).
+    score=50 -> average brain activation
+    score>70 -> ROI significantly more active than others
+    score<30 -> ROI less active than average
     """
     n_vertices = preds.shape[1]
 
-    # Essayer nilearn, sinon fallback
+    # Try nilearn, otherwise fallback
     masks = get_roi_masks(n_vertices)
     if masks is None:
         masks = get_roi_masks_fallback(n_vertices)
 
-    # Étape 1 : activation brute par ROI (moyenne spatiale + temporelle)
+    # Step 1: raw activation per ROI (spatial + temporal mean)
     roi_activities = {}
     for roi_name in ROI_DESTRIEUX:
         mask = masks.get(roi_name)
@@ -280,7 +279,7 @@ def compute_brain_matrix(preds: np.ndarray) -> dict:
     if not valid_vals:
         return {k: 50 for k in ROI_DESTRIEUX}
 
-    # Étape 2 : z-score cross-ROI → chaque ROI comparée aux autres
+    # Step 2: cross-ROI z-score -> each ROI compared to others
     roi_mean = float(np.mean(valid_vals))
     roi_std  = float(np.std(valid_vals))
     if roi_std < 1e-9:
@@ -293,7 +292,7 @@ def compute_brain_matrix(preds: np.ndarray) -> dict:
             matrix[roi_name] = 50
             continue
         z     = (val - roi_mean) / roi_std
-        # z=-2 → 0/100, z=0 → 50/100, z=+2 → 100/100
+        # z=-2 -> 0/100, z=0 -> 50/100, z=+2 -> 100/100
         score = int(np.clip(50 + z * 25, 0, 100))
         matrix[roi_name] = score
 
@@ -301,34 +300,33 @@ def compute_brain_matrix(preds: np.ndarray) -> dict:
 
 
 def interpret_matrix(matrix: dict) -> str:
-    """Génère le texte d'interprétation de la matrice."""
+    """Generate the interpretation text for the matrix."""
     lines = []
     for roi_name, score in matrix.items():
         label = ROI_LABELS[roi_name]
         interp = ROI_INTERPRETATIONS[roi_name]
         if score >= 65:
-            niveau_key = "haut"
-            niveau_str = "▲ Élevé"
+            level_key = "high"
+            level_str = "High"
         elif score >= 35:
-            niveau_key = "moyen"
-            niveau_str = "◆ Moyen"
+            level_key = "medium"
+            level_str = "Medium"
         else:
-            niveau_key = "bas"
-            niveau_str = "▼ Faible"
-        lines.append(f"{label} : {score}/100 [{niveau_str}]\n  → {interp[niveau_key]}")
+            level_key = "low"
+            level_str = "Low"
+        lines.append(f"{label}: {score}/100 [{level_str}]\n  -> {interp[level_key]}")
     return "\n\n".join(lines)
 
 
 def make_radar_chart(matrix: dict) -> Image.Image:
-    """Génère un radar chart (toile d'araignée) des 6 métriques."""
-    # Labels sans emojis pour matplotlib (le serveur n'a pas les polices emoji)
+    """Generate a radar chart (spider web) of the 6 metrics."""
     RADAR_LABELS = {
-        "memorisation":       "Memorisation",
-        "plaisir_dopamine":   "Plaisir /\nDopamine",
-        "stress_anxiete":     "Stress /\nAnxiete",
-        "attention_visuelle": "Attention\nVisuelle",
-        "resonance_sociale":  "Resonance\nSociale",
-        "impact_audio":       "Impact Audio",
+        "memorability":       "Memorability",
+        "pleasure_dopamine":  "Pleasure /\nDopamine",
+        "stress_anxiety":     "Stress /\nAnxiety",
+        "visual_attention":   "Visual\nAttention",
+        "social_resonance":   "Social\nResonance",
+        "audio_impact":       "Audio Impact",
     }
     labels  = [RADAR_LABELS[k] for k in ROI_DESTRIEUX]
     values  = [matrix.get(k, 50) for k in ROI_DESTRIEUX]
@@ -339,11 +337,11 @@ def make_radar_chart(matrix: dict) -> Image.Image:
 
     fig, ax = plt.subplots(figsize=(6, 6), subplot_kw=dict(polar=True))
 
-    # Zones de référence
+    # Reference zones
     ax.fill(angles, [65] * (N + 1), alpha=0.04, color='green')
     ax.fill(angles, [35] * (N + 1), alpha=0.04, color='orange')
 
-    # Courbe principale
+    # Main curve
     ax.plot(angles, values_plot, 'o-', linewidth=2.5, color='#FF4500')
     ax.fill(angles, values_plot, alpha=0.18, color='#FF4500')
 
@@ -358,13 +356,13 @@ def make_radar_chart(matrix: dict) -> Image.Image:
     ax.set_yticklabels(['25', '50', '75', '100'], size=7, color='#888')
     ax.grid(color='#ddd', linewidth=0.8)
 
-    ax.set_title("Matrice Neurologique Wardogz", size=12, fontweight='bold', pad=20)
+    ax.set_title("Wardogz Neurological Matrix", size=12, fontweight='bold', pad=20)
 
-    # Annotation score mémorable
-    mem_score = matrix.get("memorisation", 50)
-    dop_score = matrix.get("plaisir_dopamine", 50)
+    # Annotation for memorable score
+    mem_score = matrix.get("memorability", 50)
+    dop_score = matrix.get("pleasure_dopamine", 50)
     ax.text(0.5, -0.12,
-            f"Mémorisation {mem_score}/100  ·  Dopamine {dop_score}/100",
+            f"Memorability {mem_score}/100  ·  Dopamine {dop_score}/100",
             transform=ax.transAxes, ha='center', fontsize=8, color='#555')
 
     plt.tight_layout()
@@ -375,55 +373,168 @@ def make_radar_chart(matrix: dict) -> Image.Image:
     plt.close(fig)
     return img
 
+
+def make_brain_scan(preds: np.ndarray) -> Image.Image:
+    """
+    Render a 3D brain surface map from fMRI predictions using nilearn.
+    Shows 4 views: left lateral, right lateral, left medial, right medial.
+    preds shape: (n_timesteps, n_vertices) — we average across time.
+    """
+    try:
+        from nilearn import datasets, plotting, surface
+
+        # Average across timesteps to get one activation map
+        mean_activation = np.mean(preds, axis=0)  # (n_vertices,)
+
+        # Load fsaverage5 mesh (matches tribev2's 20484 vertices)
+        fsaverage = datasets.fetch_surf_fsaverage("fsaverage5")
+
+        n_vertices = len(mean_activation)
+        half = n_vertices // 2
+        data_lh = mean_activation[:half]
+        data_rh = mean_activation[half:]
+
+        fig, axes = plt.subplots(2, 2, figsize=(10, 8),
+                                 subplot_kw={"projection": "3d"},
+                                 gridspec_kw={"wspace": 0, "hspace": -0.1})
+
+        views = [
+            (axes[0, 0], "left",  fsaverage["pial_left"],  data_lh, "Left Lateral"),
+            (axes[0, 1], "right", fsaverage["pial_right"], data_rh, "Right Lateral"),
+            (axes[1, 0], "right", fsaverage["pial_left"],  data_lh, "Left Medial"),
+            (axes[1, 1], "left",  fsaverage["pial_right"], data_rh, "Right Medial"),
+        ]
+
+        vmin = np.percentile(mean_activation, 2)
+        vmax = np.percentile(mean_activation, 98)
+
+        for ax, hemi, mesh, data, title in views:
+            bg_map = fsaverage[f"sulc_{hemi}" if hemi in ("left", "right") else "sulc_left"]
+            # Use the correct sulcal map for the hemisphere being plotted
+            if "Left" in title:
+                bg_map = fsaverage["sulc_left"]
+            else:
+                bg_map = fsaverage["sulc_right"]
+
+            plotting.plot_surf_stat_map(
+                mesh, data,
+                hemi=hemi,
+                view=(0, 180) if "Lateral" in title and "Left" in title else
+                      (0, 0) if "Lateral" in title and "Right" in title else
+                      (0, 0) if "Medial" in title and "Left" in title else
+                      (0, 180),
+                bg_map=bg_map,
+                cmap="hot",
+                vmin=vmin, vmax=vmax,
+                threshold=np.percentile(np.abs(mean_activation), 20),
+                axes=ax,
+                colorbar=False,
+                symmetric_cbar=False,
+            )
+            ax.set_title(title, fontsize=10, pad=-5)
+
+        fig.suptitle("Brain Activation Map — Wardogz", fontsize=13, fontweight="bold", y=0.95)
+
+        buf = io.BytesIO()
+        plt.savefig(buf, format="png", bbox_inches="tight", dpi=150, facecolor="white")
+        buf.seek(0)
+        img = Image.open(buf).copy()
+        plt.close(fig)
+        return img
+
+    except Exception as e:
+        print(f"WARNING: Brain scan rendering failed: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
+
+
+def make_brain_timesteps(preds: np.ndarray, segments, n_timesteps: int = 15) -> Image.Image:
+    """
+    Render a multi-panel brain surface visualization showing activation
+    at each timestep with stimulus frames, using PlotBrain (PyVista).
+    Same as tribe_demo.ipynb notebook visualization.
+    """
+    try:
+        from tribev2.plotting import PlotBrain
+        plotter = PlotBrain(mesh="fsaverage5")
+
+        n = min(n_timesteps, len(preds))
+        seg = segments[:n] if segments is not None else None
+        fig = plotter.plot_timesteps(
+            preds[:n],
+            segments=seg,
+            cmap="fire",
+            norm_percentile=99,
+            vmin=0.5,
+            alpha_cmap=(0, 0.2),
+            show_stimuli=True,
+        )
+
+        buf = io.BytesIO()
+        fig.savefig(buf, format="png", bbox_inches="tight", dpi=120)
+        buf.seek(0)
+        img = Image.open(buf).copy()
+        plt.close(fig)
+        print(f"Brain timesteps rendered: {n} frames (PyVista)")
+        return img
+
+    except Exception as e:
+        print(f"WARNING: Brain timestep rendering failed: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
+
+
 # ============================================================
-# PROFILS D'AUDIT
+# AUDIT PROFILES
 # ============================================================
 
 AUDIT_PROFILES = {
-    "UGC Court (< 60s)": {
+    "Short UGC (< 60s)": {
         "target_height": 720,
-        "thresholds": {"excellent": 70, "moyen": 45},
+        "thresholds": {"excellent": 70, "medium": 45},
         "labels": {
-            "excellent": "🔥 UGC très engageant — fort potentiel de conversion",
-            "moyen":     "⚡ Engagement modéré — tester un hook plus fort en ouverture",
-            "faible":    "⚠️ Engagement faible — revoir le rythme et les premiers instants",
+            "excellent": "Highly engaging UGC — strong conversion potential",
+            "medium":    "Moderate engagement — try a stronger opening hook",
+            "low":       "Low engagement — rework the pacing and first moments",
         },
-        "description": "Optimisé pour Reels, TikTok, Stories — vidéos < 60 secondes"
+        "description": "Optimized for Reels, TikTok, Stories — videos under 60 seconds"
     },
-    "Motion Design (pub)": {
+    "Motion Design (ad)": {
         "target_height": 1080,
-        "thresholds": {"excellent": 65, "moyen": 40},
+        "thresholds": {"excellent": 65, "medium": 40},
         "labels": {
-            "excellent": "🔥 Motion très efficace — narration visuelle optimale",
-            "moyen":     "⚡ Efficacité modérée — vérifier la lisibilité des textes à l'écran",
-            "faible":    "⚠️ Manque d'impact — simplifier le message et accélérer les cuts",
+            "excellent": "Highly effective motion — optimal visual storytelling",
+            "medium":    "Moderate effectiveness — check on-screen text readability",
+            "low":       "Lacking impact — simplify the message and speed up cuts",
         },
-        "description": "Pour animations, explainers, publicités animées"
+        "description": "For animations, explainers, animated advertisements"
     },
     "Long Format (> 1min)": {
         "target_height": 720,
-        "thresholds": {"excellent": 60, "moyen": 35},
+        "thresholds": {"excellent": 60, "medium": 35},
         "labels": {
-            "excellent": "🔥 Attention maintenue sur la durée — excellent travail narratif",
-            "moyen":     "⚡ Décrochages identifiés — renforcer les transitions et relances",
-            "faible":    "⚠️ Attention fragile — restructurer autour de 3 moments forts max",
+            "excellent": "Sustained attention throughout — excellent narrative work",
+            "medium":    "Drop-offs detected — strengthen transitions and hooks",
+            "low":       "Fragile attention — restructure around 3 key moments max",
         },
-        "description": "Témoignages, tutoriels, vidéos > 60 secondes"
+        "description": "Testimonials, tutorials, videos over 60 seconds"
     },
-    "Audit Personnalisé": {
+    "Custom Audit": {
         "target_height": 720,
-        "thresholds": {"excellent": 70, "moyen": 45},
+        "thresholds": {"excellent": 70, "medium": 45},
         "labels": {
-            "excellent": "🔥 Score élevé",
-            "moyen":     "⚡ Score moyen",
-            "faible":    "⚠️ Score faible",
+            "excellent": "High score",
+            "medium":    "Medium score",
+            "low":       "Low score",
         },
-        "description": "Paramètres manuels — configure les seuils toi-même"
+        "description": "Manual parameters — configure the thresholds yourself"
     },
 }
 
 # ============================================================
-# HISTORIQUE
+# HISTORY
 # ============================================================
 
 def load_history():
@@ -444,6 +555,21 @@ def save_to_history(entry: dict):
         json.dump(history, f, ensure_ascii=False, indent=2)
 
 
+def pil_to_base64(img: Image.Image, fmt="PNG", quality=85) -> str:
+    """Convert a PIL image to a base64 data URI."""
+    if img is None:
+        return ""
+    # Convert RGBA to RGB for JPEG compatibility
+    if fmt == "JPEG" and img.mode == "RGBA":
+        bg = Image.new("RGB", img.size, (255, 255, 255))
+        bg.paste(img, mask=img.split()[3])
+        img = bg
+    buf = io.BytesIO()
+    img.save(buf, format=fmt, quality=quality)
+    mime = "image/png" if fmt == "PNG" else "image/jpeg"
+    return f"data:{mime};base64,{base64.b64encode(buf.getvalue()).decode()}"
+
+
 def extract_thumbnail(video_path, timestamp=1.0):
     try:
         clip  = _open_video(video_path)
@@ -456,59 +582,105 @@ def extract_thumbnail(video_path, timestamp=1.0):
         img.save(buf, format="JPEG", quality=80)
         return f"data:image/jpeg;base64,{base64.b64encode(buf.getvalue()).decode()}"
     except Exception as e:
-        print(f"⚠️ Thumbnail : {e}")
+        print(f"WARNING: Thumbnail: {e}")
         return None
 
 
 def format_history_html(history):
     if not history:
-        return "<div style='text-align:center;color:#888;padding:40px'>Aucune analyse enregistrée.</div>"
+        return "<div style='text-align:center;color:#888;padding:40px'>No analyses recorded.</div>"
     cards = []
-    for entry in history:
+    for idx, entry in enumerate(history):
         score  = entry.get("score", 0)
         color  = "#22c55e" if score >= 70 else "#f59e0b" if score >= 45 else "#ef4444"
         thumb  = entry.get("thumbnail", "")
         matrix = entry.get("matrix", {})
+        verdict = entry.get("verdict", "")
+
         thumb_html = (
-            f'<img src="{thumb}" style="width:100%;border-radius:6px 6px 0 0;object-fit:cover;height:110px">'
+            f'<img src="{thumb}" style="width:100%;border-radius:6px;object-fit:cover;height:140px">'
             if thumb else
-            '<div style="height:110px;background:#eee;border-radius:6px 6px 0 0;display:flex;align-items:center;justify-content:center;color:#aaa">📹</div>'
+            '<div style="height:140px;background:#eee;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#aaa">Video</div>'
         )
-        # Mini-barres pour les 6 métriques
+
+        # Mini bars for the 6 metrics
         mini_bars = ""
         for roi_key, roi_label_full in ROI_LABELS.items():
             val       = matrix.get(roi_key, 0)
             bar_color = "#22c55e" if val >= 65 else "#f59e0b" if val >= 35 else "#ef4444"
-            short     = roi_label_full.split(" ", 1)[1][:12]
+            short     = roi_label_full[:14]
             mini_bars += f"""
-            <div style="display:flex;align-items:center;gap:4px;margin-bottom:2px">
-                <span style="font-size:9px;width:80px;color:#555;white-space:nowrap;overflow:hidden">{short}</span>
-                <div style="flex:1;background:#eee;border-radius:3px;height:5px">
-                    <div style="width:{val}%;background:{bar_color};height:5px;border-radius:3px"></div>
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">
+                <span style="font-size:11px;width:110px;color:#555;white-space:nowrap;overflow:hidden">{short}</span>
+                <div style="flex:1;background:#eee;border-radius:3px;height:8px">
+                    <div style="width:{val}%;background:{bar_color};height:8px;border-radius:3px"></div>
                 </div>
-                <span style="font-size:9px;color:#777;width:22px;text-align:right">{val}</span>
+                <span style="font-size:11px;color:#777;width:28px;text-align:right;font-weight:bold">{val}</span>
             </div>"""
+
+        # Plot images
+        img_attention  = entry.get("img_attention", "")
+        img_radar      = entry.get("img_radar", "")
+        img_brain      = entry.get("img_brain", "")
+        img_timesteps  = entry.get("img_timesteps", "")
+
+        plots_html = ""
+        for img_src, label in [(img_attention, "Attention Curve"), (img_radar, "Neurological Matrix"), (img_brain, "Brain Activation"), (img_timesteps, "Brain Activity Timeline")]:
+            if img_src:
+                plots_html += f"""
+                <div style="flex:1;min-width:250px">
+                    <div style="font-size:11px;color:#888;margin-bottom:4px;font-weight:600">{label}</div>
+                    <img src="{img_src}" style="width:100%;border-radius:6px;border:1px solid #eee">
+                </div>"""
+
+        # Verdict text
+        verdict_html = ""
+        if verdict:
+            verdict_escaped = verdict.replace("\n", "<br>").replace("  ", "&nbsp;&nbsp;")
+            verdict_html = f"""
+            <div style="background:#f8f9fa;border-radius:6px;padding:12px;margin-top:10px;font-size:12px;font-family:monospace;line-height:1.6;color:#333;white-space:pre-wrap;max-height:300px;overflow-y:auto">
+                {verdict_escaped}
+            </div>"""
+
         card = f"""
-        <div style="background:white;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.1);overflow:hidden;min-width:210px;max-width:250px;flex-shrink:0">
-            {thumb_html}
-            <div style="padding:10px">
-                <div style="font-weight:bold;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="{entry.get('filename','')}">{entry.get('filename','Vidéo')}</div>
-                <div style="font-size:10px;color:#888;margin-bottom:5px">{entry.get('date','')} · {entry.get('profile','')}</div>
-                <div style="font-size:20px;font-weight:bold;color:{color};margin-bottom:6px">{score}<span style="font-size:11px;color:#888">/100</span></div>
-                {mini_bars}
+        <div style="background:white;border-radius:10px;box-shadow:0 2px 12px rgba(0,0,0,0.08);overflow:hidden;margin-bottom:20px;border:1px solid #eee">
+            <div style="padding:16px">
+                <!-- Header -->
+                <div style="display:flex;gap:16px;align-items:flex-start;margin-bottom:14px">
+                    <div style="width:200px;flex-shrink:0">
+                        {thumb_html}
+                    </div>
+                    <div style="flex:1">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+                            <div style="font-weight:bold;font-size:16px" title="{entry.get('filename','')}">{entry.get('filename','Video')}</div>
+                            <div style="font-size:28px;font-weight:bold;color:{color}">{score}<span style="font-size:14px;color:#888">/100</span></div>
+                        </div>
+                        <div style="font-size:12px;color:#888;margin-bottom:10px">{entry.get('date','')} · {entry.get('profile','')} · {entry.get('duration_label','')}</div>
+                        <div style="font-size:12px;color:#666;margin-bottom:4px">{entry.get('trough_label','')} · Trend: {entry.get('trend','')}</div>
+                        <div style="margin-top:10px">{mini_bars}</div>
+                    </div>
+                </div>
+
+                <!-- Plots -->
+                <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:12px">
+                    {plots_html}
+                </div>
+
+                <!-- Verdict -->
+                {verdict_html}
             </div>
         </div>"""
         cards.append(card)
-    return f'<div style="display:flex;gap:14px;flex-wrap:wrap;padding:10px 0">{"".join(cards)}</div>'
+    return f'<div style="padding:10px 0">{"".join(cards)}</div>'
 
 # ============================================================
-# UTILITAIRES VIDÉO
+# VIDEO UTILITIES
 # ============================================================
 
 def _open_video(video_path):
     """
-    Ouvre une VideoFileClip en gérant moviepy v1.x (moviepy.editor)
-    et moviepy v2.x (moviepy directement).
+    Open a VideoFileClip handling moviepy v1.x (moviepy.editor)
+    and moviepy v2.x (moviepy directly).
     """
     try:
         from moviepy import VideoFileClip
@@ -526,7 +698,7 @@ def get_video_info(video_path):
         clip.close()
         return duration, w, h
     except Exception as e:
-        print(f"⚠️ moviepy get_video_info : {e}")
+        print(f"WARNING: moviepy get_video_info: {e}")
         return 32.0, 1280, 720
 
 
@@ -535,14 +707,14 @@ def downscale_video(video_path, target_height):
         clip = _open_video(video_path)
         h, w = clip.size[1], clip.size[0]
         if h <= target_height:
-            print(f"📹 Résolution OK ({w}×{h})")
+            print(f"Resolution OK ({w}x{h})")
             clip.close()
             return video_path
         ratio    = target_height / h
         new_w    = int(w * ratio)
         out_path = video_path + f"_{target_height}p.mp4"
-        print(f"⚡ Downscale : {w}×{h} → {new_w}×{target_height}")
-        # moviepy v2.x a renommé resize() en resized(), on essaie les deux
+        print(f"Downscaling: {w}x{h} -> {new_w}x{target_height}")
+        # moviepy v2.x renamed resize() to resized()
         try:
             resized = clip.resized((new_w, target_height))   # v2.x
         except AttributeError:
@@ -551,7 +723,7 @@ def downscale_video(video_path, target_height):
         clip.close()
         return out_path
     except Exception as e:
-        print(f"⚠️ Downscale échoué ({e})")
+        print(f"WARNING: Downscale failed ({e})")
         return video_path
 
 
@@ -572,37 +744,37 @@ def analyse_curve(curve_100, seconds, real_duration):
         avg = np.mean(curve_100[i:i + window])
         if avg < min_avg: min_avg, min_start = avg, i
         if avg > max_avg: max_avg, max_start = avg, i
-    creux_s = int(seconds[min_start])
-    creux_e = min(int(real_duration), creux_s + 5)
-    pic_s   = int(seconds[max_start])
-    pic_e   = min(int(real_duration), pic_s + 5)
-    mid     = n // 2
-    d       = np.mean(curve_100[mid:]) - np.mean(curve_100[:mid])
-    tendance = ("montante 📈" if d > 10 else "descendante 📉" if d < -10 else "stable ➡️")
-    return score, creux_s, creux_e, int(min_avg), pic_s, pic_e, int(max_avg), tendance
+    trough_s = int(seconds[min_start])
+    trough_e = min(int(real_duration), trough_s + 5)
+    peak_s   = int(seconds[max_start])
+    peak_e   = min(int(real_duration), peak_s + 5)
+    mid      = n // 2
+    d        = np.mean(curve_100[mid:]) - np.mean(curve_100[:mid])
+    trend = ("rising" if d > 10 else "declining" if d < -10 else "stable")
+    return score, trough_s, trough_e, int(min_avg), peak_s, peak_e, int(max_avg), trend
 
 # ============================================================
-# VISUALISATION — COURBE TEMPORELLE
+# VISUALIZATION — TEMPORAL CURVE
 # ============================================================
 
-def make_attention_plot(curve_100, seconds, real_duration, score, creux_s, creux_e,
-                        pic_s, pic_e, niveau, video_label):
+def make_attention_plot(curve_100, seconds, real_duration, score, trough_s, trough_e,
+                        peak_s, peak_e, level, video_label):
     fig, ax = plt.subplots(figsize=(13, 5))
-    ax.plot(seconds, curve_100, color='#FF4500', linewidth=2.5, label='Engagement cérébral', zorder=3)
+    ax.plot(seconds, curve_100, color='#FF4500', linewidth=2.5, label='Brain Engagement', zorder=3)
     ax.fill_between(seconds, curve_100, alpha=0.10, color='#FF4500')
-    mask_creux = (seconds >= creux_s) & (seconds <= creux_e)
-    ax.fill_between(seconds, curve_100, where=mask_creux, alpha=0.30,
-                    color='#ef4444', label=f'⚠ Creux ({creux_s}s–{creux_e}s)')
-    mask_pic = (seconds >= pic_s) & (seconds <= pic_e)
-    ax.fill_between(seconds, curve_100, where=mask_pic, alpha=0.22,
-                    color='#22c55e', label=f'★ Pic ({pic_s}s–{pic_e}s)')
-    color_line = "#22c55e" if niveau == "excellent" else "#f59e0b" if niveau == "moyen" else "#ef4444"
+    mask_trough = (seconds >= trough_s) & (seconds <= trough_e)
+    ax.fill_between(seconds, curve_100, where=mask_trough, alpha=0.30,
+                    color='#ef4444', label=f'Trough ({trough_s}s-{trough_e}s)')
+    mask_peak = (seconds >= peak_s) & (seconds <= peak_e)
+    ax.fill_between(seconds, curve_100, where=mask_peak, alpha=0.22,
+                    color='#22c55e', label=f'Peak ({peak_s}s-{peak_e}s)')
+    color_line = "#22c55e" if level == "excellent" else "#f59e0b" if level == "medium" else "#ef4444"
     ax.axhline(y=score, color=color_line, linestyle='--', alpha=0.8, linewidth=1.5,
-               label=f'Score moyen : {score}/100')
-    ax.set_title(f"Courbe d'Attention — {video_label or 'Vidéo'} · Wardogz",
+               label=f'Average Score: {score}/100')
+    ax.set_title(f"Attention Curve — {video_label or 'Video'} · Wardogz",
                  fontsize=13, fontweight='bold', pad=14)
-    ax.set_xlabel("Temps (secondes)", fontsize=11)
-    ax.set_ylabel("Engagement Cérébral / 100", fontsize=11)
+    ax.set_xlabel("Time (seconds)", fontsize=11)
+    ax.set_ylabel("Brain Engagement / 100", fontsize=11)
     ax.legend(fontsize=9, loc='upper right')
     ax.grid(True, alpha=0.18)
     ax.set_xlim(0, real_duration)
@@ -616,60 +788,58 @@ def make_attention_plot(curve_100, seconds, real_duration, score, creux_s, creux
     return img
 
 # ============================================================
-# FONCTION PRINCIPALE D'ANALYSE
+# MAIN ANALYSIS FUNCTION
 # ============================================================
 
-def scan_video(video, profile_name, seuil_excellent, seuil_moyen, video_label):
+def scan_video(video, profile_name, threshold_excellent, threshold_medium, video_label):
 
     if model is None:
-        return "❌ Modèle non chargé.", None, None, format_history_html(load_history())
+        return "Model not loaded.", None, None, None, None, format_history_html(load_history())
     if video is None:
-        return "⚠️ Aucune vidéo uploadée.", None, None, format_history_html(load_history())
+        return "No video uploaded.", None, None, None, None, format_history_html(load_history())
 
     try:
         uv_path = os.path.expanduser("~/.cargo/bin")
         if uv_path not in os.environ.get("PATH", ""):
             os.environ["PATH"] = f"{uv_path}:{os.environ['PATH']}"
 
-        profile = AUDIT_PROFILES.get(profile_name, AUDIT_PROFILES["UGC Court (< 60s)"])
-        if profile_name == "Audit Personnalisé":
-            profile["thresholds"]["excellent"] = seuil_excellent
-            profile["thresholds"]["moyen"]     = seuil_moyen
+        profile = AUDIT_PROFILES.get(profile_name, AUDIT_PROFILES["Short UGC (< 60s)"])
+        if profile_name == "Custom Audit":
+            profile["thresholds"]["excellent"] = threshold_excellent
+            profile["thresholds"]["medium"]    = threshold_medium
         target_height = profile["target_height"]
         thresholds    = profile["thresholds"]
         labels        = profile["labels"]
 
         real_duration, orig_w, orig_h = get_video_info(video)
-        duration_label = f"{int(real_duration)}s · {orig_w}×{orig_h}"
-        print(f"🎬 {duration_label}")
+        duration_label = f"{int(real_duration)}s · {orig_w}x{orig_h}"
+        print(f"Video: {duration_label}")
 
         thumbnail        = extract_thumbnail(video, timestamp=min(1.0, real_duration * 0.1))
         video_to_analyse = downscale_video(video, target_height)
 
         df_events = model.get_events_dataframe(video_path=video_to_analyse)
 
-        # ✅ FIX durée : on injecte la durée réelle AVEC une marge de sécurité de 0.1s
-        # Tribe v2 fait un assert strict "end <= clip.duration", donc si on arrondit
-        # à 32.0 mais que la vidéo fait 31.95s → AssertionError. On soustrait 0.1s.
+        # Duration fix: inject real duration WITH a 0.1s safety margin.
+        # Tribe v2 does a strict assert "end <= clip.duration", so if we round
+        # to 32.0 but the video is 31.95s -> AssertionError. Subtract 0.1s.
         safe_duration = real_duration - 0.1
         for col in ['Duration', 'duration']:
             if col in df_events.columns:
-                # Ne réduire que si notre valeur est supérieure à ce que Tribe v2 a détecté
                 current_val = df_events[col].iloc[0] if len(df_events) > 0 else 0
                 if safe_duration > current_val:
                     df_events[col] = safe_duration
-                    print(f"✅ Durée injectée : {safe_duration:.2f}s (réelle {real_duration:.2f}s, marge -0.1s)")
+                    print(f"Duration injected: {safe_duration:.2f}s (actual {real_duration:.2f}s, margin -0.1s)")
 
-        print("🧠 Prédiction Tribe v2...")
+        print("Running Tribe v2 prediction...")
         with torch.cuda.amp.autocast(enabled=torch.cuda.is_available()):
             preds, segments = model.predict(events=df_events)
         if isinstance(preds, torch.Tensor):
             preds = preds.detach().cpu().numpy()
         n_kept = len(preds)
-        print(f"✅ preds shape : {preds.shape}")
+        print(f"Predictions shape: {preds.shape}")
 
-        # ── Timestamps réels (Segment.start confirmé à 1 Hz) ────────
-        # Structure confirmée : list[Segment], chaque Segment a .start (float, en secondes)
+        # Real timestamps (Segment.start confirmed at 1 Hz)
         seg_times = None
         try:
             if hasattr(segments, '__len__') and len(segments) > 0:
@@ -684,139 +854,147 @@ def scan_video(video, profile_name, seuil_excellent, seuil_moyen, video_label):
                             seg_times = segments[col].values.astype(float)
                             break
         except Exception as e:
-            print(f"⚠️ seg_times : {e}")
+            print(f"WARNING: seg_times: {e}")
 
-        # ── Couverture temporelle ────────────────────────────────
-        # 1 prédiction = 1 seconde de signal fMRI à 1 Hz.
-        # n_kept / durée = fraction de la vidéo couverte (≈ 1.0 pour les vidéos parlées)
+        # Temporal coverage
+        # 1 prediction = 1 second of fMRI signal at 1 Hz.
+        # n_kept / duration = fraction of video covered (approx 1.0 for spoken videos)
         frac         = n_kept / max(real_duration, 1)
         coverage_pct = min(int(frac * 100), 100)
-        confiance    = "Haute" if frac >= 0.8 else "Moyenne" if frac >= 0.4 else "Faible"
-        print(f"📡 Couverture : {n_kept} pts / {real_duration:.1f}s · {coverage_pct}% · {confiance}")
+        confidence   = "High" if frac >= 0.8 else "Medium" if frac >= 0.4 else "Low"
+        print(f"Coverage: {n_kept} pts / {real_duration:.1f}s · {coverage_pct}% · {confidence}")
 
-        # ── Courbe d'attention globale ──────────────────────────
+        # Global attention curve
         raw_curve = np.mean(preds, axis=1)
         curve_100 = normalize_curve(raw_curve)
         n_points  = len(curve_100)
 
-        # Axe temporel : vrais timestamps si disponibles (plus précis), sinon linspace
+        # Time axis: real timestamps if available (more precise), otherwise linspace
         if seg_times is not None and len(seg_times) == n_points:
             seconds = seg_times
         else:
             seconds = np.linspace(0, real_duration, n_points)
 
-        score, creux_s, creux_e, creux_val, pic_s, pic_e, pic_val, tendance = analyse_curve(
+        score, trough_s, trough_e, trough_val, peak_s, peak_e, peak_val, trend = analyse_curve(
             curve_100, seconds, real_duration
         )
 
-        niveau = (
+        level = (
             "excellent" if score >= thresholds["excellent"] else
-            "moyen"     if score >= thresholds["moyen"]     else
-            "faible"
+            "medium"    if score >= thresholds["medium"]    else
+            "low"
         )
 
-        # ── Matrice neurologique (6 métriques) ──────────────────
-        print("🔬 Calcul matrice neurologique...")
+        # Neurological matrix (6 metrics)
+        print("Computing neurological matrix...")
         matrix = compute_brain_matrix(preds)
         matrix_text = interpret_matrix(matrix)
 
-        # ── Verdict global ──────────────────────────────────────
-        emoji  = "🔥" if niveau == "excellent" else "⚡" if niveau == "moyen" else "⚠️"
-        confiance_note = {
-            "Haute":   "✅ Signal fiable",
-            "Moyenne": "⚡ Signal partiel (vidéo peu parlée ?)",
-            "Faible":  "⚠️ Signal faible — résultats à prendre avec précaution",
-        }[confiance]
+        # Global verdict
+        confidence_note = {
+            "High":   "Reliable signal",
+            "Medium": "Partial signal (video has little speech?)",
+            "Low":    "Weak signal — results should be taken with caution",
+        }[confidence]
         verdict = "\n".join([
-            f"{emoji} Score Global : {score}/100",
-            labels[niveau],
+            f"Overall Score: {score}/100",
+            labels[level],
             "",
-            f"📉 Creux : {creux_s}s–{creux_e}s ({creux_val}/100) → zone à retravailler",
-            f"📈 Pic   : {pic_s}s–{pic_e}s ({pic_val}/100) → moment fort",
-            f"📊 Tendance : {tendance}",
+            f"Trough: {trough_s}s-{trough_e}s ({trough_val}/100) -> area to rework",
+            f"Peak:   {peak_s}s-{peak_e}s ({peak_val}/100) -> strongest moment",
+            f"Trend:  {trend}",
             "",
-            f"📡 Signal : {n_kept} segments / {int(real_duration)}s · {confiance_note}",
+            f"Signal: {n_kept} segments / {int(real_duration)}s · {confidence_note}",
             "",
-            "──── Matrice Neurologique ────",
-            "  (scores relatifs : 50=dans la moyenne, >70=saillant, <30=sous-actif)",
+            "---- Neurological Matrix ----",
+            "  (relative scores: 50=average, >70=salient, <30=under-active)",
             matrix_text,
             "",
-            f"🎬 {n_points} pts · {duration_label} · Profil : {profile_name}",
+            f"Video: {n_points} pts · {duration_label} · Profile: {profile_name}",
         ])
 
-        # ── Visualisations ──────────────────────────────────────
+        # Visualizations
         plot_attention = make_attention_plot(
             curve_100, seconds, real_duration, score,
-            creux_s, creux_e, pic_s, pic_e, niveau, video_label
+            trough_s, trough_e, peak_s, peak_e, level, video_label
         )
         plot_radar = make_radar_chart(matrix)
+        plot_brain = make_brain_scan(preds)
+        plot_timesteps = make_brain_timesteps(preds, segments)
 
-        # ── Historique ──────────────────────────────────────────
+        # History
         entry = {
             "date":          datetime.datetime.now().strftime("%d/%m/%Y %H:%M"),
             "filename":      video_label or pathlib.Path(video).name,
             "profile":       profile_name,
             "score":         score,
             "duration_label":duration_label,
-            "creux_label":   f"Creux {creux_s}s–{creux_e}s ({creux_val}/100)",
-            "tendance":      tendance,
+            "trough_label":  f"Trough {trough_s}s-{trough_e}s ({trough_val}/100)",
+            "trend":         trend,
             "thumbnail":     thumbnail,
-            "niveau":        niveau,
+            "level":         level,
             "matrix":        matrix,
+            "verdict":       verdict,
+            "img_attention": pil_to_base64(plot_attention, fmt="JPEG", quality=80),
+            "img_radar":     pil_to_base64(plot_radar, fmt="JPEG", quality=80),
+            "img_brain":     pil_to_base64(plot_brain, fmt="JPEG", quality=80),
+            "img_timesteps": pil_to_base64(plot_timesteps, fmt="JPEG", quality=80),
         }
         save_to_history(entry)
 
-        print(f"✅ Terminé — Score {score}/100 | Creux {creux_s}s–{creux_e}s")
-        return verdict, plot_attention, plot_radar, format_history_html(load_history())
+        print(f"Done — Score {score}/100 | Trough {trough_s}s-{trough_e}s")
+        return verdict, plot_attention, plot_radar, plot_brain, plot_timesteps, format_history_html(load_history())
 
     except Exception as e:
         import traceback
-        print(f"❌\n{traceback.format_exc()}")
-        return f"❌ Erreur :\n{str(e)}", None, None, format_history_html(load_history())
+        print(f"Error:\n{traceback.format_exc()}")
+        return f"Error:\n{str(e)}", None, None, None, None, format_history_html(load_history())
 
 # ============================================================
-# INTERFACE GRADIO
+# GRADIO INTERFACE
 # ============================================================
 
 with gr.Blocks(theme=gr.themes.Soft(), title="Wardogz Brain Scanner v2") as demo:
 
     gr.Markdown("""
-    # 🧠 BlackMotion × Wardogz — Neuro-UGC Scanner v2
-    *Courbe d'attention + Matrice neurologique · Powered by Meta Tribe v2*
+    # BlackMotion x Wardogz — Neuro-UGC Scanner v2
+    *Attention curve + Neurological matrix · Powered by Meta Tribe v2*
     """)
-    gr.Markdown(f"**Statut :** {status_msg}")
+    gr.Markdown(f"**Status:** {status_msg}")
 
     with gr.Tabs():
 
-        # ── TAB 1 : ANALYSE ─────────────────────────────────────
-        with gr.Tab("🔬 Analyse"):
+        # Tab 1: Analysis
+        with gr.Tab("Analysis"):
             with gr.Row():
 
                 with gr.Column(scale=1):
-                    input_video = gr.Video(label="📹 Upload Vidéo (HD, SD, toute durée)")
+                    input_video = gr.Video(label="Upload Video (HD, SD, any duration)")
                     video_label = gr.Textbox(
-                        label="Nom du projet / client",
-                        placeholder="Ex: Fidanimo UGC Mars 2026"
+                        label="Project / client name",
+                        placeholder="e.g. Fidanimo UGC March 2026"
                     )
-                    gr.Markdown("### ⚙️ Profil d'audit")
+                    gr.Markdown("### Audit Profile")
                     profile_selector = gr.Radio(
                         choices=list(AUDIT_PROFILES.keys()),
-                        value="UGC Court (< 60s)",
-                        label="Type de contenu",
+                        value="Short UGC (< 60s)",
+                        label="Content type",
                     )
                     profile_desc = gr.Markdown(
-                        f"*{AUDIT_PROFILES['UGC Court (< 60s)']['description']}*"
+                        f"*{AUDIT_PROFILES['Short UGC (< 60s)']['description']}*"
                     )
-                    with gr.Accordion("🎛️ Seuils (Audit Personnalisé uniquement)", open=False):
-                        seuil_excellent = gr.Slider(50, 90, value=70, step=5, label="Seuil Excellent")
-                        seuil_moyen     = gr.Slider(20, 70, value=45, step=5, label="Seuil Moyen")
-                    btn = gr.Button("🚀 Lancer le Scan Cérébral", variant="primary", size="lg")
+                    with gr.Accordion("Thresholds (Custom Audit only)", open=False):
+                        threshold_excellent = gr.Slider(50, 90, value=70, step=5, label="Excellent Threshold")
+                        threshold_medium    = gr.Slider(20, 70, value=45, step=5, label="Medium Threshold")
+                    btn = gr.Button("Launch Brain Scan", variant="primary", size="lg")
 
                 with gr.Column(scale=2):
-                    output_verdict = gr.Textbox(label="🎯 Verdict + Matrice Neurologique", lines=18)
+                    output_verdict = gr.Textbox(label="Verdict + Neurological Matrix", lines=18)
                     with gr.Row():
-                        output_attention = gr.Image(label="📊 Courbe d'Attention fMRI")
-                        output_radar     = gr.Image(label="🕸️ Matrice Neurologique")
+                        output_attention = gr.Image(label="fMRI Attention Curve")
+                        output_radar     = gr.Image(label="Neurological Matrix")
+                    output_brain = gr.Image(label="3D Brain Activation Map")
+                    output_timesteps = gr.Image(label="Brain Activity Timeline (per second)")
 
             profile_selector.change(
                 fn=lambda p: f"*{AUDIT_PROFILES[p]['description']}*",
@@ -824,21 +1002,21 @@ with gr.Blocks(theme=gr.themes.Soft(), title="Wardogz Brain Scanner v2") as demo
                 outputs=profile_desc
             )
 
-        # ── TAB 2 : HISTORIQUE ──────────────────────────────────
-        with gr.Tab("📁 Historique des Scans"):
-            gr.Markdown("### Toutes vos analyses — métriques neurologiques incluses")
+        # Tab 2: History
+        with gr.Tab("Scan History"):
+            gr.Markdown("### All your analyses — neurological metrics included")
             history_display = gr.HTML(value=format_history_html(load_history()))
-            gr.Button("🔄 Rafraîchir", size="sm").click(
+            gr.Button("Refresh", size="sm").click(
                 fn=lambda: format_history_html(load_history()),
                 outputs=history_display
             )
 
     btn.click(
         fn=scan_video,
-        inputs=[input_video, profile_selector, seuil_excellent, seuil_moyen, video_label],
-        outputs=[output_verdict, output_attention, output_radar, history_display],
+        inputs=[input_video, profile_selector, threshold_excellent, threshold_medium, video_label],
+        outputs=[output_verdict, output_attention, output_radar, output_brain, output_timesteps, history_display],
     )
 
-    gr.Markdown("---\n*Meta Tribe v2 (V-JEPA2 + LLaMA 3.2 + Wav2Vec-BERT) · Atlas Destrieux · © Wardogz Agency*")
+    gr.Markdown("---\n*Meta Tribe v2 (V-JEPA2 + LLaMA 3.2 + Wav2Vec-BERT) · Destrieux Atlas · Wardogz Agency*")
 
 demo.launch()

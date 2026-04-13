@@ -1,0 +1,6 @@
+fastapi>=0.115
+uvicorn>=0.34
+boto3>=1.35
+python-multipart>=0.0.18
+nilearn>=0.11
+numpy>=2.0

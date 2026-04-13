@@ -33,3 +33,6 @@ wandb/
 
 # OS
 .DS_Store
+
+# superpowers
+.superpowers/

@@ -5,7 +5,7 @@
 # LICENSE file in the root directory of this source tree.
 
 import typing as tp
-from collections import Counter, OrderedDict, defaultdict
+from collections import OrderedDict
 from functools import lru_cache
 from pathlib import Path
 
@@ -20,51 +20,10 @@ from neuralset.extractors.neuro import FSAVERAGE_SIZES
 
 from tribev2.eventstransforms import RemoveDuplicates
 
-FMRI_SPACES = {
-    "Algonauts2025Bold": "MNI152NLIN2009C_ASYM_RES_01",
-    "Wen2017": "MNI152NLIN6_ASYM_RES_01",
-    "Lahner2024Bold": "MNI152NLIN2009C_ASYM_RES_01",
-    "Lebel2023Bold": "MNI152NLIN2009C_ASYM_RES_01",
-    "Vanessen2023": "MNI152NLIN6_ASYM_RES_01",
-    "Aliko2020": "MNICOLIN27",
-    "Li2022": "MNICOLIN27",
-    "Nastase2020": "MNI152NLIN2009C_ASYM_RES_01",
-}
-RECORDING_DURATIONS = {
-    "Algonauts2025Bold/sub-01": 66.4,
-    "Algonauts2025Bold/sub-02": 66.4,
-    "Algonauts2025Bold/sub-03": 66.4,
-    "Algonauts2025Bold/sub-04": 0,
-    "Algonauts2025Bold/sub-05": 66.4,
-    "Algonauts2025Bold/sub-06": 0,
-    "Lahner2024Bold/1": 6.2,
-    "Lahner2024Bold/10": 6.2,
-    "Lahner2024Bold/2": 6.2,
-    "Lahner2024Bold/3": 6.2,
-    "Lahner2024Bold/4": 6.2,
-    "Lahner2024Bold/5": 6.2,
-    "Lahner2024Bold/6": 6.2,
-    "Lahner2024Bold/7": 6.2,
-    "Lahner2024Bold/8": 6.2,
-    "Lahner2024Bold/9": 6.2,
-    "Lebel2023Bold/UTS01": 17.9,
-    "Lebel2023Bold/UTS02": 18.1,
-    "Lebel2023Bold/UTS03": 18.1,
-    "Lebel2023Bold/UTS04": 6.2,
-    "Lebel2023Bold/UTS05": 6.4,
-    "Lebel2023Bold/UTS06": 6.4,
-    "Lebel2023Bold/UTS07": 6.4,
-    "Lebel2023Bold/UTS08": 6.4,
-    "Wen2017/subject1": 11.7,
-    "Wen2017/subject2": 11.7,
-    "Wen2017/subject3": 11.7,
-}
-
 
 class MultiStudyLoader(EventsBuilder):
     """Config for loading multiple studies.
     Note that the query and enhancers are shared across all studies.
-    For example, setting timeline_index == 0 will select the first timeline of each study.
     """
 
     names: str | list[str]
@@ -132,39 +91,6 @@ class MultiStudyLoader(EventsBuilder):
         return out
 
 
-def split_segments_by_time(
-    segments: list[ns.segments.Segment], val_ratio: float, split: str
-) -> list[ns.segments.Segment]:
-    timeline_segments = defaultdict(list)
-    return_segments = []
-    for segment in segments:
-        if len(segment.ns_events) == 0:
-            continue
-        timeline = segment.ns_events[0].timeline
-        timeline_segments[timeline].append(segment)
-    for timeline, segments in timeline_segments.items():
-        start = min(segment.start for segment in segments)
-        stop = max(segment.stop for segment in segments)
-        split_time = start + (stop - start) * val_ratio
-        for segment in segments:
-            if split == "val" and segment.start < split_time:
-                return_segments.append(segment)
-            elif split == "train" and segment.start >= split_time:
-                return_segments.append(segment)
-    return return_segments
-
-
-def assign_fmri_space(events: pd.DataFrame, space: str | None = None) -> pd.DataFrame:
-    assert events.study.nunique() == 1, "Only one study can be assigned at a time"
-    study_name = events.study.unique()[0]
-    if study_name not in FMRI_SPACES:
-        raise ValueError(f"Study {study_name} not found in FMRI_SPACES")
-    default_space = FMRI_SPACES[study_name]
-    assigned_space = space or default_space
-    events.loc[events.type == "Fmri", "space"] = assigned_space
-    return events
-
-
 def set_study_in_average_subject_mode(
     study: EventsBuilder, trigger_type: str, trigger_field: str = "filepath"
 ) -> EventsBuilder:
@@ -179,35 +105,9 @@ def set_study_in_average_subject_mode(
     return study
 
 
-def get_subject_weights(
-    subject_id_mapping: dict[str, int],
-    weigh_by: tp.Literal[
-        "n_subjects", "speech", "video", "recording_time"
-    ] = "n_subjects",
-) -> dict[str, float]:
-    subject_weights = []
-    if weigh_by in ["speech", "video"]:
-        for subject in subject_id_mapping:
-            if weigh_by == "speech":
-                weight = int(subject.startswith("Lebel"))
-            elif weigh_by == "video":
-                weight = int(subject.startswith("Algonauts"))
-            subject_weights.append(float(weight))
-    elif weigh_by == "recording_time":
-        for subject in subject_id_mapping:
-            if subject not in RECORDING_DURATIONS:
-                raise ValueError(f"Subject {subject} not found in RECORDING_DURATIONS")
-            subject_weights.append(float(RECORDING_DURATIONS[subject]))
-    elif weigh_by == "n_subjects":
-        num_subjects_per_study = Counter(
-            [k.split("/")[0] for k in subject_id_mapping.keys()]
-        )
-        for subject in subject_id_mapping:
-            weight = 1 / num_subjects_per_study[subject.split("/")[0]]
-            subject_weights.append(float(weight))
-    else:
-        raise ValueError(f"Invalid weight type: {weigh_by}")
-    return subject_weights
+# ------------------------------------------------------------------
+# HCP-MMP1 atlas helpers
+# ------------------------------------------------------------------
 
 
 @lru_cache

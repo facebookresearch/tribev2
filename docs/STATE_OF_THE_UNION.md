@@ -18,42 +18,33 @@ A fork of Meta's **TRIBE v2** — a foundation model that predicts fMRI brain re
 ## Repository Structure
 
 ```
-neuroLoop/                     NEW — brain region analysis SDK
+neuroLoop/                     Brain region analysis SDK
 ├── __init__.py                   Lazy export of BrainAtlas
 ├── atlas.py                      BrainAtlas class (261 lines)
 └── regions.py                    HCP-MMP1 grouping tables (167 lines)
 
-tribev2/                       UPSTREAM — Meta's research codebase
+tribev2/                       TRIBE v2 inference engine (from Meta)
 ├── model.py                      FmriEncoder: Transformer multimodal→fMRI (234 lines)
-├── main.py                       TribeExperiment: training orchestrator (651 lines)
-├── pl_module.py                  PyTorch Lightning module (155 lines)
+├── main.py                       Data + TribeExperiment: config & data loading (240 lines)
 ├── demo_utils.py                 TribeModel: inference API (392 lines)
 ├── eventstransforms.py           Event processing pipeline (273 lines)
-├── utils.py                      Multi-study loading, HCP labels (318 lines)
+├── utils.py                      HCP labels, multi-study loading (210 lines)
 ├── utils_fmri.py                 Surface projection (248 lines)
-├── grids/
-│   ├── defaults.py               Full default config (267 lines)
-│   ├── configs.py                mini_config + base_config (60 lines)
-│   ├── run_cortical.py           Slurm grid search - cortical
-│   ├── run_subcortical.py        Slurm grid search - subcortical
-│   └── test_run.py               Local test entry point
-├── plotting/
-│   ├── base.py                   BasePlotBrain abstract class (497 lines)
-│   ├── cortical.py               Nilearn backend (311 lines)
-│   ├── cortical_pv.py            PyVista backend (280 lines)
-│   ├── subcortical.py            Subcortical visualization (311 lines)
-│   └── utils.py                  Colormaps, normalization, layout (563 lines)
-└── studies/
-    ├── algonauts2025.py          Friends + films, 4 subjects (315 lines)
-    ├── lahner2024bold.py         Short videos, 10 subjects (293 lines)
-    ├── lebel2023bold.py          Spoken stories, 8 subjects (344 lines)
-    └── wen2017.py                Naturalistic video, 3 subjects (78 lines)
+└── plotting/
+    ├── base.py                   BasePlotBrain abstract class (497 lines)
+    ├── cortical.py               Nilearn backend (311 lines)
+    ├── cortical_pv.py            PyVista backend (280 lines)
+    ├── subcortical.py            Subcortical visualization (311 lines)
+    └── utils.py                  Colormaps, normalization, layout (563 lines)
 
 tribe_demo.ipynb               Colab notebook: load model → predict → visualize
 pyproject.toml                 Package config (Python >=3.11)
 ```
 
-**Total**: ~6,200 lines of Python across 35 files.
+**Removed** (training-only, not needed for inference):
+- `tribev2/studies/` — dataset definitions (Algonauts2025, Lahner2024, Lebel2023, Wen2017)
+- `tribev2/grids/` — Slurm grid search configs
+- `tribev2/pl_module.py` — PyTorch Lightning training module
 
 ---
 
@@ -93,14 +84,16 @@ Multimodal inputs (text / audio / video)
 
 ---
 
-## Datasets
+## Training Datasets (used by pretrained model, not included in repo)
 
-| Study | Stimuli | Subjects | TR (sec) | Timelines |
-|-------|---------|----------|----------|-----------|
-| Algonauts2025 | Friends + 4 films | 4 | 1.49 | 1,588 |
-| Lahner2024 | 3-sec video clips | 10 | 1.75 | 520 |
-| Lebel2023 | Spoken stories | 8 | 2.0 | 432 |
-| Wen2017 | Naturalistic video | 3 | 2.0 | variable |
+The pretrained model on HuggingFace was trained on these datasets:
+
+| Study | Stimuli | Subjects | TR (sec) |
+|-------|---------|----------|----------|
+| Algonauts2025 | Friends + 4 films | 4 | 1.49 |
+| Lahner2024 | 3-sec video clips | 10 | 1.75 |
+| Lebel2023 | Spoken stories | 8 | 2.0 |
+| Wen2017 | Naturalistic video | 3 | 2.0 |
 
 ---
 
@@ -191,30 +184,22 @@ No architectural changes to the upstream TRIBE v2 model.
 ### Optional: plotting
 - nibabel, matplotlib, nilearn, pyvista, seaborn, colorcet, scipy, scikit-image
 
-### Optional: training
-- lightning, torchmetrics, wandb, nibabel
-
 ---
 
 ## Entry Points
 
-```bash
-# Inference (Python)
+```python
+# Inference
 from tribev2 import TribeModel
 model = TribeModel.from_pretrained("facebook/tribev2")
 preds, segments = model.predict(model.get_events_dataframe(video_path="clip.mp4"))
 
-# Region analysis (Python)
+# Region analysis
 from neuroLoop import BrainAtlas
 df = BrainAtlas().to_dataframe(preds)
 
-# Training (CLI)
-python -m tribev2.grids.test_run           # local test
-python -m tribev2.grids.run_cortical       # Slurm grid search
-python -m tribev2.grids.run_subcortical    # Slurm grid search
-
-# Demo
-jupyter notebook tribe_demo.ipynb
+# Demo notebook
+# jupyter notebook tribe_demo.ipynb
 ```
 
 ---

@@ -47,12 +47,6 @@ Repository = "https://github.com/facebookresearch/tribev2"
     "pyvista",
     "scikit-image",
   ]
-  training = [
-    "nibabel",
-    "torchmetrics",
-    "wandb",
-    "lightning",  
-  ]
   test = [
     "pytest",
   ]

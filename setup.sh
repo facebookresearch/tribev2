@@ -4,6 +4,18 @@ set -euo pipefail
 echo "=== neuroLoop setup ==="
 
 # ------------------------------------------------------------------
+# 0. Load .env if it exists
+# ------------------------------------------------------------------
+if [ -f .env ]; then
+  set -a
+  source .env
+  set +a
+  echo "Loaded .env"
+else
+  echo "No .env found — copy .env.example to .env and fill in your AWS credentials"
+fi
+
+# ------------------------------------------------------------------
 # 1. Install uv if not present
 # ------------------------------------------------------------------
 if ! command -v uv &>/dev/null; then

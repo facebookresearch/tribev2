@@ -1,103 +1,139 @@
 <div align="center">
 
-# TRIBE v2
+# neuroLoop
 
-**A Foundation Model of Vision, Audition, and Language for In-Silico Neuroscience**
+**Brain activity visualization dashboard powered by TRIBE v2**
 
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/facebookresearch/tribev2/blob/main/tribe_demo.ipynb)
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/License-CC%20BY--NC%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc/4.0/)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
 
-📄 [Paper](https://ai.meta.com/research/publications/a-foundation-model-of-vision-audition-and-language-for-in-silico-neuroscience/) ▶️ [Demo](https://aidemos.atmeta.com/tribev2/) | 🤗 [Weights](https://huggingface.co/facebook/tribev2)
-
 </div>
 
-TRIBE v2 is a deep multimodal brain encoding model that predicts fMRI brain responses to naturalistic stimuli (video, audio, text). It combines state-of-the-art text, audio and video models into a unified Transformer architecture that maps multimodal representations onto the cortical surface.
+Upload a video, audio clip, or text — neuroLoop runs [TRIBE v2](https://ai.meta.com/research/publications/a-foundation-model-of-vision-audition-and-language-for-in-silico-neuroscience/) to predict fMRI brain responses, then visualizes the results as a 3D brain with real-time region activation scores.
 
-## Quick start
+Built on Meta's TRIBE v2 foundation model and the HCP-MMP1 brain atlas (360 regions, 7 functional networks).
 
-Load a pretrained model from HuggingFace and predict brain responses to a video:
+## Prerequisites
+
+- A **GPU instance** (Lambda Cloud, or any machine with CUDA) — TRIBE v2 requires a GPU for inference
+- An **AWS S3 bucket** for storing uploads and results
+- A **HuggingFace account** with access to [Llama-3.2-3B](https://huggingface.co/meta-llama/Llama-3.2-3B) (accept Meta's license, then generate a token)
+
+### S3 CORS Configuration
+
+Your S3 bucket needs CORS enabled for browser-based downloads. In the AWS console, add this CORS policy to your bucket:
+
+```json
+[{
+    "AllowedOrigins": ["*"],
+    "AllowedMethods": ["GET", "PUT"],
+    "AllowedHeaders": ["*"],
+    "MaxAgeSeconds": 3600
+}]
+```
+
+## Setup
+
+```bash
+# Clone and enter the repo
+git clone https://github.com/markuel/neuroLoop.git
+cd neuroLoop
+
+# Configure credentials
+cp .env.example .env
+# Edit .env with your AWS keys and HuggingFace token:
+#   AWS_ACCESS_KEY_ID=...
+#   AWS_SECRET_ACCESS_KEY=...
+#   AWS_DEFAULT_REGION=us-east-1
+#   HF_TOKEN=...
+
+# Run setup (installs everything + starts servers)
+bash setup.sh
+```
+
+`setup.sh` handles everything automatically:
+
+1. Installs [uv](https://docs.astral.sh/uv/) (if not present)
+2. Creates a Python 3.11 venv and installs all dependencies via `uv pip`
+3. Installs Node.js (if not present) and frontend dependencies
+4. Logs in to HuggingFace for gated model access
+5. Pre-downloads the TRIBE v2 model checkpoint (~1GB)
+6. Pre-fetches the fsaverage5 cortical mesh
+7. Starts the backend (port 8000) and frontend (port 5173)
+
+Once running, open **http://localhost:5173** in your browser.
+
+## Usage
+
+1. Click **Upload Video** or **Paste Text** in the top bar
+2. Wait for TRIBE v2 to process (progress bar shows status)
+3. View results:
+   - **Left panel**: Video playback (or text display)
+   - **Right panel**: 3D brain — rotate and zoom with mouse
+   - **Timeline**: Scrub through time, play/pause
+   - **Bottom panel**: Top 10 activated brain regions at the current timestep, color-coded by functional network
+
+## Architecture
+
+```
+Browser (React + Three.js)  ←→  FastAPI (Lambda Cloud GPU)  ←→  AWS S3
+```
+
+- **Frontend**: React 19, Vite, Three.js (react-three-fiber), Tailwind CSS, Zustand
+- **Backend**: FastAPI serving TRIBE v2 inference + neuroLoop region analysis
+- **Storage**: AWS S3 for uploaded media and prediction results
+
+## Project Structure
+
+```
+neuroLoop/              Brain region analysis SDK
+├── atlas.py               BrainAtlas class (HCP-MMP1 → region timeseries)
+└── regions.py             360 regions × 2 grouping levels (7 coarse, 22 fine)
+
+tribev2/                TRIBE v2 inference engine (Meta)
+├── model.py               FmriEncoder: Transformer multimodal → fMRI
+├── main.py                Data loading and experiment config
+├── demo_utils.py          TribeModel: inference API
+└── plotting/              Brain visualization (nilearn + PyVista)
+
+dashboard/
+├── backend/
+│   └── app/
+│       ├── main.py        FastAPI endpoints
+│       ├── predict.py     TRIBE v2 + neuroLoop pipeline
+│       ├── mesh.py        fsaverage5 mesh extraction
+│       └── s3.py          AWS S3 helpers
+└── frontend/
+    └── src/
+        ├── App.jsx        Dashboard layout + job polling
+        ├── components/    BrainViewer, VideoPlayer, Timeline, RegionPanel, ...
+        ├── stores/        Zustand state management
+        └── utils/         API helpers, colorscale
+```
+
+## neuroLoop SDK
+
+The `neuroLoop` package can also be used standalone in Python:
 
 ```python
-from tribev2 import TribeModel
+from neuroLoop import BrainAtlas
 
-model = TribeModel.from_pretrained("facebook/tribev2", cache_folder="./cache")
+atlas = BrainAtlas()
 
-df = model.get_events_dataframe(video_path="path/to/video.mp4")
-preds, segments = model.predict(events=df)
-print(preds.shape)  # (n_timesteps, n_vertices)
+# Map raw predictions to named regions
+df = atlas.to_dataframe(preds)                    # (n_timesteps, 360) DataFrame
+ts = atlas.region_timeseries(preds, "V1")          # Single region timeseries
+grouped = atlas.all_group_timeseries(preds, "coarse")  # 7 functional networks
+
+# Explore regions and groups
+atlas.list_groups("coarse")   # Visual, Somatomotor, Dorsal Attention, ...
+atlas.list_groups("fine")     # Primary Visual, Early Auditory, Premotor, ...
+atlas.list_regions("Visual", level="coarse")  # 32 regions in the Visual network
 ```
 
-Predictions are for the "average" subject (see paper for details) and live on the **fsaverage5** cortical mesh (~20k vertices).
-They are offset by 5 seconds in the past, in order to compensate for the hemodynamic lag.
+## Citation
 
-You can also pass `text_path` or `audio_path` to `model.get_events_dataframe` — text is automatically converted to speech and transcribed to obtain word-level timings.
-
-For a full walkthrough with brain visualizations, see the [Colab demo notebook](https://colab.research.google.com/github/facebookresearch/tribev2/blob/main/tribe_demo.ipynb).
-
-## Installation
-
-**Basic** (inference only):
-```bash
-pip install -e .
-```
-
-**With brain visualization**:
-```bash
-pip install -e ".[plotting]"
-```
-
-**With training dependencies** (PyTorch Lightning, W&B, etc.):
-```bash
-pip install -e ".[training]"
-```
-
-## Training a model from scratch
-
-### 1. Set environment variables
-
-Configure data/output paths and Slurm partition (or edit `tribev2/grids/defaults.py` directly):
-
-```bash
-export DATAPATH="/path/to/studies"
-export SAVEPATH="/path/to/output"
-```
-
-
-### 2. Run training
-
-**Local test run:**
-```bash
-python -m tribev2.grids.test_run
-```
-
-**Grid search on Slurm:**
-```bash
-python -m tribev2.grids.run_cortical
-python -m tribev2.grids.run_subcortical
-```
-
-## Project structure
-
-```
-tribev2/
-├── main.py              # Experiment pipeline: Data, TribeExperiment
-├── model.py             # FmriEncoder: Transformer-based multimodal→fMRI model
-├── pl_module.py         # PyTorch Lightning training module
-├── demo_utils.py        # TribeModel and helpers for inference from text/audio/video
-├── eventstransforms.py  # Custom event transforms (word extraction, chunking, …)
-├── utils.py             # Multi-study loading, splitting, subject weighting
-├── utils_fmri.py        # Surface projection (MNI / fsaverage) and ROI analysis
-├── grids/
-│   ├── defaults.py      # Full default experiment configuration
-│   └── test_run.py      # Quick local test entry point
-├── plotting/            # Brain visualization (PyVista & Nilearn backends)
-└── studies/             # Dataset definitions (Algonauts2025, Lahner2024, …)
-```
-
-## Contributing to open science
-
-If you use this software, please share your results with the broader research community using the following citation:
+This project is built on TRIBE v2. If you use this software, please cite:
 
 ```bibtex
 @article{dAscoli2026TribeV2,
@@ -111,6 +147,4 @@ If you use this software, please share your results with the broader research co
 
 This project is licensed under CC-BY-NC-4.0. See [LICENSE](LICENSE) for details.
 
-## Contributing
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for how to get involved.
+TRIBE v2 is created by Meta Platforms, Inc. The neuroLoop SDK and dashboard are built on top of TRIBE v2 under the same license terms.

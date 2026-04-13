@@ -16,21 +16,8 @@ Built on Meta's TRIBE v2 foundation model and the HCP-MMP1 brain atlas (360 regi
 ## Prerequisites
 
 - A **GPU instance** (Lambda Cloud, or any machine with CUDA) — TRIBE v2 requires a GPU for inference
-- An **AWS S3 bucket** for storing uploads and results
 - A **HuggingFace account** with access to [Llama-3.2-3B](https://huggingface.co/meta-llama/Llama-3.2-3B) (accept Meta's license, then generate a token)
-
-### S3 CORS Configuration
-
-Your S3 bucket needs CORS enabled for browser-based downloads. In the AWS console, add this CORS policy to your bucket:
-
-```json
-[{
-    "AllowedOrigins": ["*"],
-    "AllowedMethods": ["GET", "PUT"],
-    "AllowedHeaders": ["*"],
-    "MaxAgeSeconds": 3600
-}]
-```
+- **Optional:** An AWS S3 bucket (only if you want cloud storage — local mode works without AWS)
 
 ## Setup
 
@@ -39,16 +26,35 @@ Your S3 bucket needs CORS enabled for browser-based downloads. In the AWS consol
 git clone https://github.com/markuel/neuroLoop.git
 cd neuroLoop
 
-# Configure credentials
+# Configure
 cp .env.example .env
-# Edit .env with your AWS keys and HuggingFace token:
-#   AWS_ACCESS_KEY_ID=...
-#   AWS_SECRET_ACCESS_KEY=...
-#   AWS_DEFAULT_REGION=us-east-1
-#   HF_TOKEN=...
+# Edit .env — at minimum set HF_TOKEN:
+#   HF_TOKEN=your_huggingface_token
 
 # Run setup (installs everything + starts servers)
 bash setup.sh
+```
+
+### Storage modes
+
+**Local mode** (default, no AWS needed):
+```env
+STORAGE_MODE=local
+HF_TOKEN=your_token
+```
+Uploads and results are stored on the local filesystem in `./data/`. You can download results as a zip from the dashboard.
+
+**S3 mode** (persistent cloud storage):
+```env
+STORAGE_MODE=s3
+S3_BUCKET=neuroloop-data
+AWS_ACCESS_KEY_ID=...
+AWS_SECRET_ACCESS_KEY=...
+HF_TOKEN=your_token
+```
+Requires an S3 bucket with CORS enabled:
+```json
+[{"AllowedOrigins":["*"],"AllowedMethods":["GET","PUT"],"AllowedHeaders":["*"],"MaxAgeSeconds":3600}]
 ```
 
 `setup.sh` handles everything automatically:

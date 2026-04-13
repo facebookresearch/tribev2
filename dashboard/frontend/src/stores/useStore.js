@@ -1,45 +1,83 @@
 import { create } from 'zustand'
 
 const useStore = create((set, get) => ({
-  currentTime: 0,
-  duration: 0,
+  // Timeline
+  currentTime: 0,        // seconds (float) — wall-clock time in the stimulus
+  duration: 0,           // total duration in seconds
   isPlaying: false,
-  timestep: 0,
+  timestep: 0,           // integer index into predictions array
+
+  // Segment-based time mapping
+  segmentTimes: null,    // array of { start, duration } from backend
+  hemodynamicLag: 5.0,   // seconds — brain response lags stimulus
 
   setCurrentTime: (t) => {
-    const { duration, preds } = get()
+    const { duration, segmentTimes, hemodynamicLag } = get()
     const clamped = Math.max(0, Math.min(t, duration))
-    const step = preds ? Math.min(Math.floor(clamped), preds.length - 1) : 0
+    // Map wall-clock time to the correct prediction timestep
+    // Account for hemodynamic lag: brain at time T reflects stimulus at T - lag
+    const brainTime = clamped + hemodynamicLag
+    let step = 0
+    if (segmentTimes) {
+      // Find the segment whose start time is closest to brainTime
+      for (let i = 0; i < segmentTimes.length; i++) {
+        if (segmentTimes[i].start <= brainTime) {
+          step = i
+        } else {
+          break
+        }
+      }
+    } else {
+      // Fallback: linear mapping
+      const { preds } = get()
+      step = preds ? Math.min(Math.floor(clamped), preds.length - 1) : 0
+    }
     set({ currentTime: clamped, timestep: Math.max(0, step) })
   },
   setDuration: (d) => set({ duration: d }),
   setPlaying: (p) => set({ isPlaying: p }),
   togglePlaying: () => set((s) => ({ isPlaying: !s.isPlaying })),
 
+  // Mesh (loaded once)
   mesh: null,
   setMesh: (m) => set({ mesh: m }),
 
-  preds: null,
-  regions: null,
-  fineGroups: null,
-  coarseGroups: null,
-  setPredictions: ({ preds, regions, fineGroups, coarseGroups }) =>
-    set({ preds, regions, fineGroups, coarseGroups }),
+  // Predictions
+  preds: null,           // Array of Float32Array, one per timestep
+  regions: null,         // { regionName: [value_per_timestep] }
+  fineGroups: null,      // { regionName: "Fine Group Name" }
+  coarseGroups: null,    // { regionName: "Coarse Group Name" }
+  globalVmin: 0,         // global min across all timesteps (1st percentile)
+  globalVmax: 1,         // global max across all timesteps (99th percentile)
+  setPredictions: ({ preds, regions, fineGroups, coarseGroups, globalVmin, globalVmax, segmentTimes, hemodynamicLag }) =>
+    set({
+      preds, regions, fineGroups, coarseGroups,
+      globalVmin: globalVmin ?? 0,
+      globalVmax: globalVmax ?? 1,
+      segmentTimes: segmentTimes ?? null,
+      hemodynamicLag: hemodynamicLag ?? 5.0,
+    }),
 
+  // Job tracking
   jobId: null,
-  jobStatus: null,
+  jobStatus: null,       // "processing" | "done" | "error"
   jobProgress: 0,
   setJob: (j) => set(j),
 
-  inputType: null,
-  mediaUrl: null,
-  setInput: (inputType, mediaUrl) => set({ inputType, mediaUrl }),
+  // Input
+  inputType: null,       // "video" | "audio" | "text"
+  mediaUrl: null,        // blob URL for video/audio, or null for text
+  textContent: null,     // raw text for text input
+  setInput: (inputType, mediaUrl, textContent) =>
+    set({ inputType, mediaUrl: mediaUrl ?? null, textContent: textContent ?? null }),
 
+  // Reset for new prediction
   reset: () => set({
     currentTime: 0, duration: 0, isPlaying: false, timestep: 0,
     preds: null, regions: null, fineGroups: null, coarseGroups: null,
+    globalVmin: 0, globalVmax: 1, segmentTimes: null, hemodynamicLag: 5.0,
     jobId: null, jobStatus: null, jobProgress: 0,
-    inputType: null, mediaUrl: null,
+    inputType: null, mediaUrl: null, textContent: null,
   }),
 }))
 

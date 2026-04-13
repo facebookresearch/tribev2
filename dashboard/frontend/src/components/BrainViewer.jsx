@@ -10,6 +10,8 @@ function BrainMesh() {
   const mesh = useStore((s) => s.mesh)
   const preds = useStore((s) => s.preds)
   const timestep = useStore((s) => s.timestep)
+  const globalVmin = useStore((s) => s.globalVmin)
+  const globalVmax = useStore((s) => s.globalVmax)
 
   const geometry = useMemo(() => {
     if (!mesh) return null
@@ -25,15 +27,11 @@ function BrainMesh() {
   useEffect(() => {
     if (!geometry || !preds || !preds[timestep]) return
     const activations = preds[timestep]
-    let vmin = Infinity, vmax = -Infinity
-    for (let i = 0; i < activations.length; i++) {
-      if (activations[i] < vmin) vmin = activations[i]
-      if (activations[i] > vmax) vmax = activations[i]
-    }
-    const colors = activationsToColors(activations, vmin, vmax)
+    // Use global min/max (1st/99th percentile) for consistent colorscale across time
+    const colors = activationsToColors(activations, globalVmin, globalVmax)
     geometry.attributes.color.array.set(colors)
     geometry.attributes.color.needsUpdate = true
-  }, [geometry, preds, timestep])
+  }, [geometry, preds, timestep, globalVmin, globalVmax])
 
   if (!geometry) return null
 

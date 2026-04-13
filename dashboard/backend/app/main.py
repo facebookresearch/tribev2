@@ -51,16 +51,13 @@ def results(job_id: str):
         return {"status": "error", "error": job.get("error", "unknown")}
     # done
     prefix = job["results_prefix"]
+    meta_url = presigned_download_url(f"{prefix}/meta.json")
     return {
         "status": "done",
-        "preds_url": presigned_download_url(f"{prefix}/preds.npy"),
+        "preds_url": presigned_download_url(f"{prefix}/preds.bin"),
         "regions_url": presigned_download_url(f"{prefix}/regions.json"),
-        "meta": {
-            "job_id": job["job_id"],
-            "filename": job["filename"],
-            "n_timesteps": job["n_timesteps"],
-            "timestamp": job["timestamp"],
-        },
+        "meta_url": meta_url,
+        "meta": job.get("meta_cache", {}),
     }
 
 @app.get("/api/runs")

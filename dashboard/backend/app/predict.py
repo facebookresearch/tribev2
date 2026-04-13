@@ -94,14 +94,30 @@ def _run_prediction(job_id: str) -> None:
                 for r in members:
                     region_to_coarse[r] = group
 
+            # Extract segment timestamps for temporal alignment
+            segment_times = [
+                {"start": float(s.start), "duration": float(s.duration)}
+                for s in segments
+            ]
+            duration_seconds = (
+                segment_times[-1]["start"] + segment_times[-1]["duration"]
+                if segment_times else 0.0
+            )
+
             # Save results to S3
             prefix = f"results/{job_id}"
 
-            # preds as .npy bytes
-            import io
-            buf = io.BytesIO()
-            np.save(buf, preds)
-            s3.upload_bytes(buf.getvalue(), f"{prefix}/preds.npy")
+            # preds as raw float32 binary (no numpy header to parse)
+            preds_f32 = preds.astype(np.float32)
+            s3.upload_bytes(
+                preds_f32.tobytes(),
+                f"{prefix}/preds.bin",
+                content_type="application/octet-stream",
+            )
+
+            # Compute global min/max for consistent colorscale
+            global_vmin = float(np.percentile(preds, 1))
+            global_vmax = float(np.percentile(preds, 99))
 
             # regions + group lookup as JSON
             regions_payload = {
@@ -122,6 +138,11 @@ def _run_prediction(job_id: str) -> None:
                 "input_type": input_type,
                 "n_timesteps": int(preds.shape[0]),
                 "n_vertices": int(preds.shape[1]),
+                "duration_seconds": duration_seconds,
+                "segment_times": segment_times,
+                "hemodynamic_lag": 5.0,
+                "global_vmin": global_vmin,
+                "global_vmax": global_vmax,
                 "timestamp": job["timestamp"],
             }
             s3.upload_bytes(
@@ -131,6 +152,7 @@ def _run_prediction(job_id: str) -> None:
             )
 
             job["n_timesteps"] = meta["n_timesteps"]
+            job["meta_cache"] = meta
             job["status"] = "done"
             job["progress"] = 1.0
             job["results_prefix"] = prefix

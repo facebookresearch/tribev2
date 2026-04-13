@@ -1,9 +1,9 @@
 import useStore from '../stores/useStore'
 
 export default function TextDisplay() {
-  const mediaUrl = useStore((s) => s.mediaUrl)
+  const textContent = useStore((s) => s.textContent)
 
-  if (!mediaUrl) {
+  if (!textContent) {
     return (
       <div className="w-full h-full bg-gray-900 rounded-lg flex items-center justify-center text-gray-600 text-sm">
         No text loaded
@@ -13,7 +13,7 @@ export default function TextDisplay() {
 
   return (
     <div className="w-full h-full bg-gray-900 rounded-lg p-4 overflow-y-auto">
-      <p className="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap">{mediaUrl}</p>
+      <p className="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap">{textContent}</p>
     </div>
   )
 }

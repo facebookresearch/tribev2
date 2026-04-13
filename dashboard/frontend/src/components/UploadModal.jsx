@@ -21,7 +21,7 @@ export default function UploadModal({ mode, onClose }) {
       const { upload_url, s3_key } = await getUploadUrl(file.name, file.type)
       await fetch(upload_url, { method: 'PUT', body: file, headers: { 'Content-Type': file.type } })
       const inputType = file.type.startsWith('audio') ? 'audio' : 'video'
-      setInput(inputType, URL.createObjectURL(file))
+      setInput(inputType, URL.createObjectURL(file), null)
       const { job_id } = await startPredict(s3_key, inputType)
       setJob({ jobId: job_id, jobStatus: 'processing', jobProgress: 0 })
       onClose()
@@ -42,7 +42,7 @@ export default function UploadModal({ mode, onClose }) {
       const filename = 'input.txt'
       const { upload_url, s3_key } = await getUploadUrl(filename, 'text/plain')
       await fetch(upload_url, { method: 'PUT', body: blob, headers: { 'Content-Type': 'text/plain' } })
-      setInput('text', text)
+      setInput('text', null, text)
       const { job_id } = await startPredict(s3_key, 'text')
       setJob({ jobId: job_id, jobStatus: 'processing', jobProgress: 0 })
       onClose()

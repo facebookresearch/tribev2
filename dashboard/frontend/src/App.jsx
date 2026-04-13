@@ -39,28 +39,35 @@ export default function App() {
       try {
         const res = await getResults(jobId)
         if (res.status === 'done') {
-          setJob({ jobStatus: 'done', jobProgress: 1 })
-          const [predsResp, regionsResp] = await Promise.all([
+          // Fetch prediction data + full meta + regions in parallel
+          const [predsResp, metaResp, regionsResp] = await Promise.all([
             fetch(res.preds_url).then((r) => r.arrayBuffer()),
+            fetch(res.meta_url).then((r) => r.json()),
             fetch(res.regions_url).then((r) => r.json()),
           ])
-          // Parse .npy — skip 128-byte header, read float64
-          const predsRaw = new Float64Array(predsResp, 128)
-          const nTimesteps = res.meta.n_timesteps
-          const nVerts = 20484
+
+          // Parse raw float32 binary (no numpy header)
+          const nTimesteps = metaResp.n_timesteps
+          const nVerts = metaResp.n_vertices
+          const predsRaw = new Float32Array(predsResp)
           const preds = []
           for (let t = 0; t < nTimesteps; t++) {
-            preds.push(new Float32Array(predsRaw.slice(t * nVerts, (t + 1) * nVerts)))
+            preds.push(predsRaw.subarray(t * nVerts, (t + 1) * nVerts))
           }
+
           setPredictions({
             preds,
             regions: regionsResp.regions,
             fineGroups: regionsResp.fine_groups,
             coarseGroups: regionsResp.coarse_groups,
+            globalVmin: metaResp.global_vmin,
+            globalVmax: metaResp.global_vmax,
+            segmentTimes: metaResp.segment_times,
+            hemodynamicLag: metaResp.hemodynamic_lag,
           })
-          if (inputType === 'text') {
-            setDuration(nTimesteps)
-          }
+
+          setDuration(metaResp.duration_seconds)
+          setJob({ jobStatus: 'done', jobProgress: 1 })
           clearInterval(interval)
         } else if (res.status === 'error') {
           setJob({ jobStatus: 'error' })
@@ -73,7 +80,7 @@ export default function App() {
       }
     }, 2000)
     return () => clearInterval(interval)
-  }, [jobId, jobStatus, inputType, setJob, setPredictions, setDuration])
+  }, [jobId, jobStatus, setJob, setPredictions, setDuration])
 
   // Play loop for text-only mode (video element drives time for video/audio)
   useEffect(() => {

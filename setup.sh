@@ -54,10 +54,20 @@ npm install
 cd ../..
 
 # ------------------------------------------------------------------
-# 4. Pre-download the TRIBE v2 model from HuggingFace
+# 4. Log in to HuggingFace (needed for gated models like Llama-3.2-3B)
+# ------------------------------------------------------------------
+if [ -n "${HF_TOKEN:-}" ]; then
+  echo "Logging in to HuggingFace..."
+  huggingface-cli login --token "$HF_TOKEN"
+else
+  echo "WARNING: HF_TOKEN not set — gated model downloads (Llama) will fail"
+  echo "Set HF_TOKEN in .env and re-run setup.sh"
+fi
+
+# ------------------------------------------------------------------
+# 5. Pre-download the TRIBE v2 model from HuggingFace
 # ------------------------------------------------------------------
 echo "Downloading TRIBE v2 model (this may take a few minutes on first run)..."
-uv pip install huggingface-hub  # ensure CLI is available
 python -c "
 from huggingface_hub import hf_hub_download
 hf_hub_download('facebook/tribev2', 'config.yaml', local_dir='./cache/facebook/tribev2')
@@ -66,13 +76,13 @@ print('Model downloaded to ./cache/')
 "
 
 # ------------------------------------------------------------------
-# 5. Pre-fetch fsaverage5 mesh (small, avoids delay on first request)
+# 6. Pre-fetch fsaverage5 mesh (small, avoids delay on first request)
 # ------------------------------------------------------------------
 echo "Downloading fsaverage5 mesh..."
 python -c "from nilearn.datasets import fetch_surf_fsaverage; fetch_surf_fsaverage('fsaverage5')"
 
 # ------------------------------------------------------------------
-# 6. Start both servers
+# 7. Start both servers
 # ------------------------------------------------------------------
 echo ""
 echo "=== Setup complete ==="

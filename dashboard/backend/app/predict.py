@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 
 import numpy as np
 
-from . import s3
+from . import storage
 
 # Global job store (in-memory, single instance)
 _jobs: dict[str, dict] = {}
@@ -54,7 +54,7 @@ def _run_prediction(job_id: str) -> None:
         # Download media from S3
         with tempfile.TemporaryDirectory() as tmpdir:
             local_path = str(Path(tmpdir) / job["filename"])
-            s3.download_file(job["s3_key"], local_path)
+            storage.download_file(job["s3_key"], local_path)
             job["progress"] = 0.2
 
             # Load model (lazy — first call is slow)
@@ -109,7 +109,7 @@ def _run_prediction(job_id: str) -> None:
 
             # preds as raw float32 binary (no numpy header to parse)
             preds_f32 = preds.astype(np.float32)
-            s3.upload_bytes(
+            storage.upload_bytes(
                 preds_f32.tobytes(),
                 f"{prefix}/preds.bin",
                 content_type="application/octet-stream",
@@ -125,7 +125,7 @@ def _run_prediction(job_id: str) -> None:
                 "fine_groups": region_to_fine,
                 "coarse_groups": region_to_coarse,
             }
-            s3.upload_bytes(
+            storage.upload_bytes(
                 json.dumps(regions_payload).encode(),
                 f"{prefix}/regions.json",
                 content_type="application/json",
@@ -145,7 +145,7 @@ def _run_prediction(job_id: str) -> None:
                 "global_vmax": global_vmax,
                 "timestamp": job["timestamp"],
             }
-            s3.upload_bytes(
+            storage.upload_bytes(
                 json.dumps(meta).encode(),
                 f"{prefix}/meta.json",
                 content_type="application/json",

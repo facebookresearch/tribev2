@@ -36,3 +36,6 @@ wandb/
 
 # superpowers
 .superpowers/
+
+# Local storage mode data
+data/

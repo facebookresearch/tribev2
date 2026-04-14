@@ -116,7 +116,12 @@ export default function BrainViewer() {
   const controlsRef = useRef()
 
   return (
-    <div className="w-full h-full bg-gray-900 rounded-lg overflow-hidden">
+    <div className="w-full h-full bg-gray-900 rounded-lg overflow-hidden relative">
+      <div className="absolute top-3 left-3 z-10 bg-gray-950/70 backdrop-blur-sm rounded-md px-3 py-2 text-[10px] text-gray-400 font-mono leading-relaxed pointer-events-none">
+        <div><span className="text-red-400 font-semibold">R</span>ight / <span className="text-red-400 font-semibold">L</span>eft</div>
+        <div><span className="text-red-400 font-semibold">A</span>nterior / <span className="text-red-400 font-semibold">P</span>osterior</div>
+        <div><span className="text-red-400 font-semibold">S</span>uperior / <span className="text-red-400 font-semibold">I</span>nferior</div>
+      </div>
       <Canvas
         camera={{
           position: [-180, -30, 100],
@@ -158,10 +163,10 @@ export default function BrainViewer() {
         <GizmoHelper alignment="bottom-right" margin={[70, 70]}>
           <GizmoViewcube
             faces={['R', 'L', 'A', 'P', 'S', 'I']}
-            color="#1f2937"
-            opacity={0.9}
-            strokeColor="#4b5563"
-            textColor="#f3f4f6"
+            color="#533483"
+            opacity={0.95}
+            strokeColor="#e94560"
+            textColor="#ffffff"
             hoverColor="#e94560"
           />
         </GizmoHelper>

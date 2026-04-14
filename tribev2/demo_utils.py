@@ -207,16 +207,22 @@ class TribeModel(TribeExperiment):
             config[f"data.{modality}_feature.infra.folder"] = cache_folder
             config[f"data.{modality}_feature.infra.cluster"] = cluster
 
+        # Strip training-only and infrastructure config before instantiation.
+        # The pretrained config.yaml contains fields for training (loss, optim,
+        # metrics, wandb, etc.) and study definitions that may reference
+        # unregistered subclasses. We keep only what inference needs.
+        checkpoint_path_value = str(config.get("infra.folder", ".")) + f"/{checkpoint_name}"
         for param in [
+            "infra",
             "infra.workdir",
             "data.study.infra_timelines",
             "data.neuro.infra",
             "data.image_feature.infra",
         ]:
-            config.pop(param)
+            config.pop(param, None)
         config["data.study.path"] = "."
         config["average_subjects"] = True
-        config["checkpoint_path"] = str(config["infra.folder"]) + f"/{checkpoint_name}"
+        config["checkpoint_path"] = checkpoint_path_value
         config["cache_folder"] = (
             str(cache_folder) if cache_folder is not None else "./cache"
         )

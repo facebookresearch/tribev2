@@ -16,12 +16,10 @@ import numpy as np
 import pandas as pd
 import pydantic
 import torch
-from exca import ConfDict, TaskInfra
 from neuralset.events.etypes import EventTypesHelper
 from neuralset.events.utils import standardize_events
 from neuraltrain.models import BaseModelConfig
 from neuraltrain.models.common import SubjectLayers
-from neuraltrain.utils import BaseExperiment
 from torch.utils.data import DataLoader
 
 from .eventstransforms import *  # register custom events transforms in neuralset
@@ -248,8 +246,12 @@ class Data(pydantic.BaseModel):
         return loaders
 
 
-class TribeExperiment(BaseExperiment):
-    """Experiment configuration for TRIBE v2 inference."""
+class TribeExperiment(pydantic.BaseModel):
+    """Experiment configuration for TRIBE v2 inference.
+
+    Inherits from BaseModel (not BaseExperiment) to avoid training
+    infrastructure requirements (TaskInfra, Slurm, etc).
+    """
 
     model_config = pydantic.ConfigDict(extra="ignore")
 
@@ -266,14 +268,22 @@ class TribeExperiment(BaseExperiment):
     # Internal
     _model: tp.Any = None
 
-    infra: TaskInfra = TaskInfra(version="1")
-
     def model_post_init(self, __context: tp.Any) -> None:
         super().model_post_init(__context)
 
-        if (
-            not (self.checkpoint_path and self.load_checkpoint)
-        ):
+        # In inference mode (path="."), skip study-dependent setup
+        if str(self.data.study.path) == ".":
+            if self.average_subjects:
+                self.brain_model_config.subject_layers.average_subjects = True
+                self.brain_model_config.subject_layers.n_subjects = 0
+                if isinstance(self.brain_model_config.projector, SubjectLayers):
+                    self.brain_model_config.projector.average_subjects = True
+                self.data.neuro.aggregation = "mean"
+                self.data.subject_id.predefined_mapping = None
+            return
+
+        # Full init for non-inference mode
+        if not (self.checkpoint_path and self.load_checkpoint):
             study_summary = self.data.study.study_summary()
             self.data.subject_id.predefined_mapping = {
                 subject: i for i, subject in enumerate(study_summary.subject.unique())

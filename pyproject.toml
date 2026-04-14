@@ -58,4 +58,4 @@ line-length = 88
 profile = "black"
 
 [tool.setuptools.packages.find]
-include = ["tribe*"]
+include = ["tribe*", "neuroLoop*"]

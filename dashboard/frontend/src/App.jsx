@@ -60,6 +60,7 @@ export default function App() {
             regions: regionsResp.regions,
             fineGroups: regionsResp.fine_groups,
             coarseGroups: regionsResp.coarse_groups,
+            regionVertices: regionsResp.region_vertices,
             globalVmin: metaResp.global_vmin,
             globalVmax: metaResp.global_vmax,
             segmentTimes: metaResp.segment_times,

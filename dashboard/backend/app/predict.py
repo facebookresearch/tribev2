@@ -83,6 +83,12 @@ def _run_prediction(job_id: str) -> None:
             region_df = atlas.all_region_timeseries(preds)
             regions_dict = {col: region_df[col].tolist() for col in region_df.columns}
 
+            # Build region -> vertex indices mapping (for frontend highlighting)
+            region_vertices = {
+                name: [int(v) for v in verts]
+                for name, verts in atlas.labels.items()
+            }
+
             # Build group lookup for frontend (region_name -> fine group name)
             from neuroLoop.regions import FINE_GROUPS, COARSE_GROUPS
             region_to_fine = {}
@@ -124,6 +130,7 @@ def _run_prediction(job_id: str) -> None:
                 "regions": regions_dict,
                 "fine_groups": region_to_fine,
                 "coarse_groups": region_to_coarse,
+                "region_vertices": region_vertices,
             }
             storage.upload_bytes(
                 json.dumps(regions_payload).encode(),

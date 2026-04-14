@@ -35,8 +35,14 @@ const useStore = create((set, get) => ({
     set({ currentTime: clamped, timestep: Math.max(0, step) })
   },
   setDuration: (d) => set({ duration: d }),
-  setPlaying: (p) => set({ isPlaying: p }),
-  togglePlaying: () => set((s) => ({ isPlaying: !s.isPlaying })),
+  setPlaying: (p) => set((s) => ({
+    isPlaying: p,
+    selectedRegion: p ? null : s.selectedRegion,
+  })),
+  togglePlaying: () => set((s) => ({
+    isPlaying: !s.isPlaying,
+    selectedRegion: !s.isPlaying ? null : s.selectedRegion,
+  })),
 
   // Mesh (loaded once)
   mesh: null,
@@ -47,16 +53,22 @@ const useStore = create((set, get) => ({
   regions: null,         // { regionName: [value_per_timestep] }
   fineGroups: null,      // { regionName: "Fine Group Name" }
   coarseGroups: null,    // { regionName: "Coarse Group Name" }
+  regionVertices: null,  // { regionName: [vertex_idx, ...] }
   globalVmin: 0,         // global min across all timesteps (1st percentile)
   globalVmax: 1,         // global max across all timesteps (99th percentile)
-  setPredictions: ({ preds, regions, fineGroups, coarseGroups, globalVmin, globalVmax, segmentTimes, hemodynamicLag }) =>
+  setPredictions: ({ preds, regions, fineGroups, coarseGroups, regionVertices, globalVmin, globalVmax, segmentTimes, hemodynamicLag }) =>
     set({
       preds, regions, fineGroups, coarseGroups,
+      regionVertices: regionVertices ?? null,
       globalVmin: globalVmin ?? 0,
       globalVmax: globalVmax ?? 1,
       segmentTimes: segmentTimes ?? null,
       hemodynamicLag: hemodynamicLag ?? 5.0,
     }),
+
+  // Region selection (for highlighting + camera focus)
+  selectedRegion: null,  // region name or null
+  setSelectedRegion: (name) => set({ selectedRegion: name }),
 
   // Job tracking
   jobId: null,
@@ -75,6 +87,7 @@ const useStore = create((set, get) => ({
   reset: () => set({
     currentTime: 0, duration: 0, isPlaying: false, timestep: 0,
     preds: null, regions: null, fineGroups: null, coarseGroups: null,
+    regionVertices: null, selectedRegion: null,
     globalVmin: 0, globalVmax: 1, segmentTimes: null, hemodynamicLag: 5.0,
     jobId: null, jobStatus: null, jobProgress: 0,
     inputType: null, mediaUrl: null, textContent: null,

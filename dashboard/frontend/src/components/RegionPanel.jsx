@@ -54,6 +54,9 @@ export default function RegionPanel() {
   const timestep = useStore((s) => s.timestep)
   const globalVmin = useStore((s) => s.globalVmin)
   const globalVmax = useStore((s) => s.globalVmax)
+  const isPlaying = useStore((s) => s.isPlaying)
+  const selectedRegion = useStore((s) => s.selectedRegion)
+  const setSelectedRegion = useStore((s) => s.setSelectedRegion)
 
   if (!regions) {
     return (
@@ -71,10 +74,17 @@ export default function RegionPanel() {
     .sort((a, b) => b.value - a.value)
     .slice(0, 10)
 
+  const clickable = !isPlaying
+
   return (
     <div className="h-full bg-gray-950 p-4 overflow-y-auto">
-      <div className="text-xs text-gray-500 font-semibold mb-3">
-        BRAIN ACTIVITY <span className="text-gray-600 font-normal">@ t={timestep}s</span>
+      <div className="text-xs text-gray-500 font-semibold mb-3 flex items-center justify-between">
+        <span>BRAIN ACTIVITY <span className="text-gray-600 font-normal">@ t={timestep}s</span></span>
+        {clickable && (
+          <span className="text-[10px] text-gray-600 font-normal">
+            {selectedRegion ? `Focused: ${selectedRegion}` : 'Click a region to focus'}
+          </span>
+        )}
       </div>
       <div className="flex flex-col gap-2">
         {entries.map(({ name, value }) => {
@@ -84,9 +94,19 @@ export default function RegionPanel() {
           const pct = Math.max(0, Math.min(100, (value / scaleMax) * 100))
           const fineDesc = FINE_DESCRIPTIONS[fine] || fine
           const coarseDesc = GROUP_DESCRIPTIONS[coarse] || coarse
+          const isSelected = selectedRegion === name
 
           return (
-            <div key={name} className="group">
+            <div
+              key={name}
+              onClick={() => {
+                if (!clickable) return
+                setSelectedRegion(isSelected ? null : name)
+              }}
+              className={`group rounded-md transition ${
+                clickable ? 'cursor-pointer hover:bg-gray-900 px-2 -mx-2 py-1 -my-1' : ''
+              } ${isSelected ? 'bg-gray-900 ring-1 ring-red-500/50' : ''}`}
+            >
               <div className="flex items-center gap-3">
                 <div className="w-36 shrink-0">
                   <div className="text-xs font-medium text-gray-200">{fineDesc}</div>

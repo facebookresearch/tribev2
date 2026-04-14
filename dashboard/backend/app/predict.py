@@ -158,6 +158,8 @@ def _run_prediction(job_id: str) -> None:
             job["results_prefix"] = prefix
 
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         job["status"] = "error"
         job["error"] = str(e)
 

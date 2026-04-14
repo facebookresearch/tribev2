@@ -102,19 +102,42 @@ export default function App() {
     <div className="h-screen flex flex-col bg-gray-950 text-white">
       <TopBar />
 
-      {jobStatus === 'processing' && (
-        <div className="h-1 bg-gray-800">
-          <div
-            className="h-full transition-all duration-500"
-            style={{
-              width: `${jobProgress * 100}%`,
-              background: 'linear-gradient(90deg, #e94560, #533483)',
-            }}
-          />
-        </div>
-      )}
+      <div className="flex-1 flex min-h-0 relative">
+        {/* Processing overlay */}
+        {jobStatus === 'processing' && (
+          <div className="absolute inset-0 z-10 bg-gray-950/80 flex flex-col items-center justify-center gap-6">
+            <div className="relative w-24 h-24">
+              <div className="absolute inset-0 rounded-full border-2 border-gray-700" />
+              <div
+                className="absolute inset-0 rounded-full border-2 border-transparent animate-spin"
+                style={{ borderTopColor: '#e94560', borderRightColor: '#533483' }}
+              />
+              <div className="absolute inset-0 flex items-center justify-center text-2xl">
+                {'\u{1F9E0}'}
+              </div>
+            </div>
+            <div className="text-center">
+              <p className="text-sm font-medium text-gray-200">
+                {jobProgress < 0.2 ? 'Downloading media...' :
+                 jobProgress < 0.4 ? 'Loading TRIBE v2 model...' :
+                 jobProgress < 0.6 ? 'Extracting features...' :
+                 jobProgress < 0.8 ? 'Running brain prediction...' :
+                 'Computing region analysis...'}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">{Math.round(jobProgress * 100)}%</p>
+            </div>
+            <div className="w-64 h-1.5 bg-gray-800 rounded-full overflow-hidden">
+              <div
+                className="h-full rounded-full transition-all duration-700 ease-out"
+                style={{
+                  width: `${jobProgress * 100}%`,
+                  background: 'linear-gradient(90deg, #e94560, #533483)',
+                }}
+              />
+            </div>
+          </div>
+        )}
 
-      <div className="flex-1 flex min-h-0">
         <div className="w-1/2 border-r border-gray-800">
           {inputType === 'text' ? <TextDisplay /> : <VideoPlayer />}
         </div>

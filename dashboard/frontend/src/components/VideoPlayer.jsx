@@ -54,7 +54,6 @@ export default function VideoPlayer() {
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={handleLoadedMetadata}
         className="max-w-full max-h-full"
-        muted
       />
     </div>
   )

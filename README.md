@@ -19,6 +19,22 @@ Built on Meta's TRIBE v2 foundation model and the HCP-MMP1 brain atlas (360 regi
 - A **HuggingFace account** with access to [Llama-3.2-3B](https://huggingface.co/meta-llama/Llama-3.2-3B) (accept Meta's license, then generate a token)
 - **Optional:** An AWS S3 bucket (only if you want cloud storage — local mode works without AWS)
 
+## Getting a GPU
+
+TRIBE v2 requires a CUDA-capable GPU. [Lambda Cloud](https://lambdalabs.com/service/gpu-cloud) is the easiest way to get one:
+
+1. Create an account at [lambdalabs.com](https://lambdalabs.com)
+2. Go to **Instances** → **Launch Instance**
+3. Pick any GPU type (a single A10 or A100 works fine)
+4. Add your SSH key (or create one in the Lambda dashboard under **SSH Keys**)
+5. Launch the instance and wait for it to show **Running**
+6. Copy the SSH command from the dashboard and connect:
+   ```bash
+   ssh ubuntu@<instance-ip>
+   ```
+
+Once you're SSH'd into the instance, continue with setup below.
+
 ## Setup
 
 ```bash
@@ -33,28 +49,6 @@ cp .env.example .env
 
 # Run setup (installs everything + starts servers)
 bash setup.sh
-```
-
-### Storage modes
-
-**Local mode** (default, no AWS needed):
-```env
-STORAGE_MODE=local
-HF_TOKEN=your_token
-```
-Uploads and results are stored on the local filesystem in `./data/`. You can download results as a zip from the dashboard.
-
-**S3 mode** (persistent cloud storage):
-```env
-STORAGE_MODE=s3
-S3_BUCKET=neuroloop-data
-AWS_ACCESS_KEY_ID=...
-AWS_SECRET_ACCESS_KEY=...
-HF_TOKEN=your_token
-```
-Requires an S3 bucket with CORS enabled:
-```json
-[{"AllowedOrigins":["*"],"AllowedMethods":["GET","PUT"],"AllowedHeaders":["*"],"MaxAgeSeconds":3600}]
 ```
 
 `setup.sh` handles everything automatically:

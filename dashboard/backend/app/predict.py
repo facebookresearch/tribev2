@@ -1,13 +1,17 @@
 # dashboard/backend/app/predict.py
 import json
+import logging
 import tempfile
 import uuid
 from pathlib import Path
 from datetime import datetime, timezone
 
 import numpy as np
+import torch
 
 from . import storage
+
+logger = logging.getLogger(__name__)
 
 # Global job store (in-memory, single instance)
 _jobs: dict[str, dict] = {}
@@ -51,35 +55,44 @@ def _run_prediction(job_id: str) -> None:
     try:
         job["progress"] = 0.1
 
-        # Download media from S3
+        # Download media from storage
         with tempfile.TemporaryDirectory() as tmpdir:
             local_path = str(Path(tmpdir) / job["filename"])
             storage.download_file(job["s3_key"], local_path)
             job["progress"] = 0.2
 
             # Load model (lazy — first call is slow)
-            from tribev2 import TribeModel
             model = _get_model()
             job["progress"] = 0.4
 
             # Build events and predict
             input_type = job["input_type"]
-            if input_type == "video":
-                events = model.get_events_dataframe(video_path=local_path)
-            elif input_type == "audio":
-                events = model.get_events_dataframe(audio_path=local_path)
-            elif input_type == "text":
-                events = model.get_events_dataframe(text_path=local_path)
-            else:
+            event_kwarg = {"video": "video_path", "audio": "audio_path", "text": "text_path"}
+            if input_type not in event_kwarg:
                 raise ValueError(f"Unknown input_type: {input_type}")
+            events = model.get_events_dataframe(**{event_kwarg[input_type]: local_path})
 
             job["progress"] = 0.6
+
+            # Use mixed precision (fp16) on CUDA for ~1.5-2x faster inference
+            use_amp = torch.cuda.is_available() and model._model is not None
+            if use_amp:
+                # Monkey-patch predict to use autocast around the model forward pass
+                _orig_forward = model._model.forward
+                def _amp_forward(*args, **kwargs):
+                    with torch.autocast("cuda", dtype=torch.float16):
+                        return _orig_forward(*args, **kwargs)
+                model._model.forward = _amp_forward
+
             preds, segments = model.predict(events=events, verbose=False)
+
+            if use_amp:
+                model._model.forward = _orig_forward
+
             job["progress"] = 0.8
 
             # Run neuroLoop region analysis
-            from neuroLoop import BrainAtlas
-            atlas = BrainAtlas()
+            atlas = _get_atlas()
             region_df = atlas.all_region_timeseries(preds)
             regions_dict = {col: region_df[col].tolist() for col in region_df.columns}
 
@@ -96,28 +109,15 @@ def _run_prediction(job_id: str) -> None:
             # Save results to storage
             prefix = f"results/{job_id}"
 
-            # preds as raw float32 binary (no numpy header to parse)
-            preds_f32 = preds.astype(np.float32)
-            storage.upload_bytes(
-                preds_f32.tobytes(),
-                f"{prefix}/preds.bin",
-                content_type="application/octet-stream",
-            )
+            # Prepare all payloads before uploading
+            if preds.dtype != np.float32:
+                preds = preds.astype(np.float32)
+            preds_bytes = preds.tobytes()
 
-            # Compute global min/max in one pass
             global_vmin, global_vmax = np.percentile(preds, [1, 99]).tolist()
 
-            # regions timeseries as JSON (static atlas data served separately via /api/atlas)
-            regions_payload = {
-                "regions": regions_dict,
-            }
-            storage.upload_bytes(
-                json.dumps(regions_payload).encode(),
-                f"{prefix}/regions.json",
-                content_type="application/json",
-            )
+            regions_bytes = json.dumps({"regions": regions_dict}).encode()
 
-            # metadata
             meta = {
                 "job_id": job_id,
                 "filename": job["filename"],
@@ -131,11 +131,14 @@ def _run_prediction(job_id: str) -> None:
                 "global_vmax": global_vmax,
                 "timestamp": job["timestamp"],
             }
-            storage.upload_bytes(
-                json.dumps(meta).encode(),
-                f"{prefix}/meta.json",
-                content_type="application/json",
-            )
+            meta_bytes = json.dumps(meta).encode()
+
+            # Upload all three files in parallel (significant for S3 mode)
+            from concurrent.futures import ThreadPoolExecutor
+            with ThreadPoolExecutor(max_workers=3) as pool:
+                pool.submit(storage.upload_bytes, preds_bytes, f"{prefix}/preds.bin", "application/octet-stream")
+                pool.submit(storage.upload_bytes, regions_bytes, f"{prefix}/regions.json", "application/json")
+                pool.submit(storage.upload_bytes, meta_bytes, f"{prefix}/meta.json", "application/json")
 
             job["n_timesteps"] = meta["n_timesteps"]
             job["meta_cache"] = meta
@@ -150,6 +153,10 @@ def _run_prediction(job_id: str) -> None:
         job["error"] = str(e)
 
 
+# ---------------------------------------------------------------------------
+# Cached singletons (model, atlas)
+# ---------------------------------------------------------------------------
+
 _model_cache = None
 
 def _get_model():
@@ -157,21 +164,43 @@ def _get_model():
     if _model_cache is None:
         from tribev2 import TribeModel
         _model_cache = TribeModel.from_pretrained("facebook/tribev2", cache_folder="./cache")
+
+        # Compile the model for faster inference (PyTorch 2.x)
+        if hasattr(torch, "compile"):
+            try:
+                _model_cache._model = torch.compile(_model_cache._model, mode="reduce-overhead")
+                logger.info("torch.compile applied to TRIBE model")
+            except Exception as exc:
+                logger.warning("torch.compile failed, running uncompiled: %s", exc)
+
     return _model_cache
 
 
-_atlas_cache = None
+_atlas_cache_obj = None
+
+def _get_atlas():
+    """Cached BrainAtlas instance — reused across jobs."""
+    global _atlas_cache_obj
+    if _atlas_cache_obj is None:
+        from neuroLoop import BrainAtlas
+        _atlas_cache_obj = BrainAtlas()
+        # Warm up cached properties so first job doesn't pay the cost
+        _ = _atlas_cache_obj.labels
+        _ = _atlas_cache_obj._indicator_matrix
+    return _atlas_cache_obj
+
+
+_atlas_data_cache = None
 
 def get_atlas_data() -> dict:
     """Static atlas data (region vertices + group lookups). Cached after first call."""
-    global _atlas_cache
-    if _atlas_cache is not None:
-        return _atlas_cache
+    global _atlas_data_cache
+    if _atlas_data_cache is not None:
+        return _atlas_data_cache
 
-    from neuroLoop import BrainAtlas
     from neuroLoop.regions import FINE_GROUPS, COARSE_GROUPS
 
-    atlas = BrainAtlas()
+    atlas = _get_atlas()
     region_vertices = {
         name: [int(v) for v in verts]
         for name, verts in atlas.labels.items()
@@ -185,9 +214,9 @@ def get_atlas_data() -> dict:
         for r in members:
             region_to_coarse[r] = group
 
-    _atlas_cache = {
+    _atlas_data_cache = {
         "region_vertices": region_vertices,
         "fine_groups": region_to_fine,
         "coarse_groups": region_to_coarse,
     }
-    return _atlas_cache
+    return _atlas_data_cache

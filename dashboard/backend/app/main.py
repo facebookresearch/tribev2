@@ -24,6 +24,21 @@ app.add_middleware(
 )
 
 
+@app.on_event("startup")
+def _warmup():
+    """Pre-load heavy resources in a background thread so first request is fast."""
+    import threading
+
+    def _load():
+        from .predict import _get_model, _get_atlas, get_atlas_data
+        from .mesh import get_fsaverage5_mesh_binary
+        get_fsaverage5_mesh_binary()
+        get_atlas_data()
+        _get_model()
+
+    threading.Thread(target=_load, daemon=True).start()
+
+
 # ------------------------------------------------------------------
 # Upload
 # ------------------------------------------------------------------

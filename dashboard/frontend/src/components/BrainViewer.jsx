@@ -70,7 +70,7 @@ function BrainMesh() {
 
   return (
     <mesh ref={meshRef} geometry={geometry}>
-      <meshStandardMaterial vertexColors />
+      <meshStandardMaterial vertexColors side={THREE.DoubleSide} />
     </mesh>
   )
 }

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useCallback } from 'react'
 import TopBar from './components/TopBar'
 import VideoPlayer from './components/VideoPlayer'
 import TextDisplay from './components/TextDisplay'
@@ -18,6 +18,8 @@ export default function App() {
   const setJob = useStore((s) => s.setJob)
   const setPredictions = useStore((s) => s.setPredictions)
   const setDuration = useStore((s) => s.setDuration)
+  const setInput = useStore((s) => s.setInput)
+  const reset = useStore((s) => s.reset)
   const isPlaying = useStore((s) => s.isPlaying)
   const atlasRef = useRef(null)
 
@@ -36,6 +38,52 @@ export default function App() {
       .catch((err) => console.error('Failed to load mesh/atlas:', err))
   }, [mesh, setMesh])
 
+  // Shared: fetch + parse + apply a completed job's results into the viewer
+  const applyJobResults = useCallback(async (res, jobId) => {
+    const [predsResp, metaResp, regionsResp] = await Promise.all([
+      fetch(res.preds_url).then((r) => r.arrayBuffer()),
+      fetch(res.meta_url).then((r) => r.json()),
+      fetch(res.regions_url).then((r) => r.json()),
+    ])
+
+    const nTimesteps = metaResp.n_timesteps
+    const nVerts = metaResp.n_vertices
+    const predsRaw = new Float32Array(predsResp)
+    const preds = []
+    for (let t = 0; t < nTimesteps; t++) {
+      preds.push(predsRaw.subarray(t * nVerts, (t + 1) * nVerts))
+    }
+
+    const atlas = atlasRef.current || {}
+
+    setInput(metaResp.input_type, null, null)
+    setPredictions({
+      preds,
+      regions: regionsResp.regions,
+      fineGroups: atlas.fine_groups ?? null,
+      coarseGroups: atlas.coarse_groups ?? null,
+      regionVertices: atlas.region_vertices ?? null,
+      globalVmin: metaResp.global_vmin,
+      globalVmax: metaResp.global_vmax,
+      segmentTimes: metaResp.segment_times,
+      hemodynamicLag: metaResp.hemodynamic_lag,
+    })
+    setDuration(metaResp.duration_seconds)
+    setJob({ jobId, jobStatus: 'done', jobProgress: 1 })
+  }, [setInput, setPredictions, setDuration, setJob])
+
+  // Load a past job from history into the viewer
+  const loadJob = useCallback(async (jobId) => {
+    try {
+      const res = await getResults(jobId)
+      if (res.status !== 'done') return
+      reset()
+      await applyJobResults(res, jobId)
+    } catch (err) {
+      console.error('Failed to load job:', err)
+    }
+  }, [reset, applyJobResults])
+
   // Poll job status
   useEffect(() => {
     if (!jobId || jobStatus !== 'processing') return
@@ -43,38 +91,7 @@ export default function App() {
       try {
         const res = await getResults(jobId)
         if (res.status === 'done') {
-          // Fetch prediction data + full meta + regions in parallel
-          const [predsResp, metaResp, regionsResp] = await Promise.all([
-            fetch(res.preds_url).then((r) => r.arrayBuffer()),
-            fetch(res.meta_url).then((r) => r.json()),
-            fetch(res.regions_url).then((r) => r.json()),
-          ])
-
-          // Parse raw float32 binary (no numpy header)
-          const nTimesteps = metaResp.n_timesteps
-          const nVerts = metaResp.n_vertices
-          const predsRaw = new Float32Array(predsResp)
-          const preds = []
-          for (let t = 0; t < nTimesteps; t++) {
-            preds.push(predsRaw.subarray(t * nVerts, (t + 1) * nVerts))
-          }
-
-          const atlas = atlasRef.current || {}
-
-          setPredictions({
-            preds,
-            regions: regionsResp.regions,
-            fineGroups: atlas.fine_groups ?? null,
-            coarseGroups: atlas.coarse_groups ?? null,
-            regionVertices: atlas.region_vertices ?? null,
-            globalVmin: metaResp.global_vmin,
-            globalVmax: metaResp.global_vmax,
-            segmentTimes: metaResp.segment_times,
-            hemodynamicLag: metaResp.hemodynamic_lag,
-          })
-
-          setDuration(metaResp.duration_seconds)
-          setJob({ jobStatus: 'done', jobProgress: 1 })
+          await applyJobResults(res, jobId)
           clearInterval(interval)
         } else if (res.status === 'error') {
           setJob({ jobStatus: 'error' })
@@ -87,7 +104,7 @@ export default function App() {
       }
     }, 2000)
     return () => clearInterval(interval)
-  }, [jobId, jobStatus, setJob, setPredictions, setDuration])
+  }, [jobId, jobStatus, setJob, applyJobResults])
 
   // Play loop for text-only mode using rAF (video element drives time for video/audio)
   useEffect(() => {
@@ -113,7 +130,7 @@ export default function App() {
 
   return (
     <div className="h-screen flex flex-col bg-gray-950 text-white">
-      <TopBar />
+      <TopBar onLoadJob={loadJob} />
 
       <div className="flex-1 flex min-h-0 relative">
         {/* Processing overlay */}

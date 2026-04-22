@@ -11,24 +11,20 @@
 
 Upload a video, audio clip, or text — neuroLoop runs [TRIBE v2](https://ai.meta.com/research/publications/a-foundation-model-of-vision-audition-and-language-for-in-silico-neuroscience/) to predict fMRI brain responses, then visualizes the results as a 3D brain with real-time region activation scores.
 
-Built on Meta's TRIBE v2 foundation model and the HCP-MMP1 brain atlas (360 regions, 7 functional networks).
+Built on Meta's TRIBE v2 foundation model and the HCP-MMP1 brain atlas.
 
-## Prerequisites
-
-- A **GPU instance** (Lambda Cloud, or any machine with CUDA) — TRIBE v2 requires a GPU for inference
-- A **HuggingFace account** with access to [Llama-3.2-3B](https://huggingface.co/meta-llama/Llama-3.2-3B) (accept Meta's license, then generate a token)
-- **Optional:** An AWS S3 bucket (only if you want cloud storage — local mode works without AWS)
+# Setup Guide:
 
 ## Getting a GPU
 
-TRIBE v2 requires a CUDA-capable GPU. [Lambda Cloud](https://lambdalabs.com/service/gpu-cloud) is the easiest way to get one:
+TRIBE v2 requires a CUDA-capable GPU. [Lambda Cloud](https://lambdalabs.com/service/gpu-cloud) is one way to get one:
 
 1. Create an account at [lambdalabs.com](https://lambdalabs.com)
 2. Go to **Instances** → **Launch Instance**
 3. Pick any GPU type (a single A10 or A100 works fine)
 4. Add your SSH key (or create one in the Lambda dashboard under **SSH Keys**)
-5. Launch the instance and wait for it to show **Running**
-6. Copy the SSH command from the dashboard and connect:
+5. Launch the instance and wait for it to show **Running** under status
+6. Copy the SSH command from the dashboard and open the terminal to connect:
    ```bash
    ssh ubuntu@<instance-ip>
    ```

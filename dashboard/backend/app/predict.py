@@ -99,8 +99,10 @@ def list_jobs() -> list[dict]:
         {
             "job_id": j["job_id"],
             "filename": j["filename"],
+            "input_type": j.get("input_type"),
             "timestamp": j["timestamp"],
             "status": j["status"],
+            "duration_seconds": j.get("duration_seconds"),
             "n_timesteps": j.get("n_timesteps"),
             "thumbnail_url": (
                 storage.presigned_download_url(j["thumbnail_key"])

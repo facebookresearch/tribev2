@@ -17,9 +17,9 @@ Built on Meta's TRIBE v2 foundation model and the HCP-MMP1 brain atlas.
 
 ## Getting a GPU
 
-TRIBE v2 requires a CUDA-capable GPU. [Lambda Cloud](https://lambdalabs.com/service/gpu-cloud) is one way to get one:
+TRIBE v2 requires a CUDA-capable GPU. [Lambda Cloud](https://cloud.lambda.ai) is one way to get one:
 
-1. Create an account at [lambdalabs.com](https://lambdalabs.com)
+1. Create an account at [cloud.lambda.ai](https://cloud.lambda.ai)
 2. Go to **Instances** → **Launch Instance**
 3. Pick any GPU type (a single A10 or A100 works fine)
 4. Add your SSH key (or create one in the Lambda dashboard under **SSH Keys**)

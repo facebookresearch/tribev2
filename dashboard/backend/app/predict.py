@@ -2,6 +2,7 @@
 import json
 import logging
 import tempfile
+import threading
 import uuid
 from pathlib import Path
 from datetime import datetime, timezone
@@ -15,6 +16,46 @@ logger = logging.getLogger(__name__)
 
 # Global job store (in-memory, single instance)
 _jobs: dict[str, dict] = {}
+
+# ------------------------------------------------------------------
+# Manifest — persists completed jobs across server restarts
+# ------------------------------------------------------------------
+
+_MANIFEST_KEY = "manifest.json"
+_manifest_lock = threading.Lock()
+
+
+def _read_manifest_raw() -> list[dict]:
+    """Read manifest from storage. Returns empty list if not found."""
+    try:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = str(Path(tmpdir) / "manifest.json")
+            storage.download_file(_MANIFEST_KEY, tmp_path)
+            return json.loads(Path(tmp_path).read_text())
+    except Exception:
+        return []
+
+
+def _append_to_manifest(entry: dict) -> None:
+    """Thread-safe append of a completed job entry to the manifest."""
+    with _manifest_lock:
+        entries = _read_manifest_raw()
+        entries.append(entry)
+        storage.upload_bytes(
+            json.dumps(entries, indent=2).encode(),
+            _MANIFEST_KEY,
+            "application/json",
+        )
+
+
+def load_manifest() -> None:
+    """Populate _jobs with completed jobs from the manifest on startup."""
+    entries = _read_manifest_raw()
+    for entry in entries:
+        job_id = entry["job_id"]
+        if job_id not in _jobs:
+            _jobs[job_id] = {**entry, "status": "done", "progress": 1.0}
+    logger.info("Loaded %d jobs from manifest", len(entries))
 
 def get_job(job_id: str) -> dict | None:
     return _jobs.get(job_id)
@@ -145,6 +186,16 @@ def _run_prediction(job_id: str) -> None:
             job["status"] = "done"
             job["progress"] = 1.0
             job["results_prefix"] = prefix
+
+            _append_to_manifest({
+                "job_id": job_id,
+                "filename": job["filename"],
+                "input_type": input_type,
+                "timestamp": job["timestamp"],
+                "results_prefix": prefix,
+                "n_timesteps": meta["n_timesteps"],
+                "duration_seconds": duration_seconds,
+            })
 
     except Exception as e:
         import traceback

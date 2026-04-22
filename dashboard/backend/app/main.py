@@ -12,7 +12,7 @@ from .storage import (
     LOCAL_DATA_DIR,
 )
 from .mesh import get_fsaverage5_mesh_binary
-from .predict import start_prediction, get_job, list_jobs, get_atlas_data
+from .predict import start_prediction, get_job, list_jobs, get_atlas_data, load_manifest
 
 app = FastAPI(title="neuroLoop API")
 app.add_middleware(
@@ -36,6 +36,7 @@ def _warmup():
         get_atlas_data()
         _get_model()
 
+    load_manifest()
     threading.Thread(target=_load, daemon=True).start()
 
 

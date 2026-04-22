@@ -11,31 +11,27 @@
 
 Upload a video, audio clip, or text — neuroLoop runs [TRIBE v2](https://ai.meta.com/research/publications/a-foundation-model-of-vision-audition-and-language-for-in-silico-neuroscience/) to predict fMRI brain responses, then visualizes the results as a 3D brain with real-time region activation scores.
 
-Built on Meta's TRIBE v2 foundation model and the HCP-MMP1 brain atlas (360 regions, 7 functional networks).
+Built on Meta's TRIBE v2 foundation model and the HCP-MMP1 brain atlas.
 
-## Prerequisites
-
-- A **GPU instance** (Lambda Cloud, or any machine with CUDA) — TRIBE v2 requires a GPU for inference
-- A **HuggingFace account** with access to [Llama-3.2-3B](https://huggingface.co/meta-llama/Llama-3.2-3B) (accept Meta's license, then generate a token)
-- **Optional:** An AWS S3 bucket (only if you want cloud storage — local mode works without AWS)
+# Setup Guide:
 
 ## Getting a GPU
 
-TRIBE v2 requires a CUDA-capable GPU. [Lambda Cloud](https://lambdalabs.com/service/gpu-cloud) is the easiest way to get one:
+TRIBE v2 requires a CUDA-capable GPU. [Lambda Cloud](https://lambdalabs.com/service/gpu-cloud) is one way to get one:
 
 1. Create an account at [lambdalabs.com](https://lambdalabs.com)
 2. Go to **Instances** → **Launch Instance**
 3. Pick any GPU type (a single A10 or A100 works fine)
 4. Add your SSH key (or create one in the Lambda dashboard under **SSH Keys**)
-5. Launch the instance and wait for it to show **Running**
-6. Copy the SSH command from the dashboard and connect:
+5. Launch the instance and wait for it to show **Running** under status
+6. Copy the lambda IP address from the dashboard and open the terminal to connect:
    ```bash
-   ssh ubuntu@<instance-ip>
+   ssh -L 5173:localhost:5173 -L 8000:localhost:8000 -i ~/.ssh/<your_SSH_key.pem ubuntu@<your_lambda_instance_ip_address>
    ```
 
 Once you're SSH'd into the instance, continue with setup below.
 
-## Setup
+## Instance Setup
 
 ```bash
 # Clone and enter the repo
@@ -44,7 +40,8 @@ cd neuroLoop
 
 # Configure
 cp .env.example .env
-# Edit .env — at minimum set HF_TOKEN:
+nano .env
+# add tour hugging face token with access to Llama
 #   HF_TOKEN=your_huggingface_token
 
 # Run setup (installs everything + starts servers)
@@ -52,14 +49,6 @@ bash setup.sh
 ```
 
 `setup.sh` handles everything automatically:
-
-1. Installs [uv](https://docs.astral.sh/uv/) (if not present)
-2. Creates a Python 3.11 venv and installs all dependencies via `uv pip`
-3. Installs Node.js (if not present) and frontend dependencies
-4. Logs in to HuggingFace for gated model access
-5. Pre-downloads the TRIBE v2 model checkpoint (~1GB)
-6. Pre-fetches the fsaverage5 cortical mesh
-7. Starts the backend (port 8000) and frontend (port 5173)
 
 Once running, open **http://localhost:5173** in your browser.
 

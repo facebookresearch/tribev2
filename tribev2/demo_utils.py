@@ -390,3 +390,106 @@ class TribeModel(TribeExperiment):
             100.0 * n_kept / max(n_samples, 1),
         )
         return preds, all_segments
+
+    def attribute(
+        self,
+        events: pd.DataFrame,
+        method: tp.Literal[
+            "integrated_gradients", "occlusion"
+        ] = "integrated_gradients",
+        modalities: tp.Sequence[str] | None = None,
+        target_vertices: int | slice | tp.Sequence[int] | torch.Tensor | None = None,
+        target_timesteps: int | slice | tp.Sequence[int] | torch.Tensor | None = None,
+        baselines: dict[str, torch.Tensor | float] | torch.Tensor | float | None = None,
+        n_steps: int = 32,
+        occlusion_window: int = 1,
+        occlusion_stride: int = 1,
+        reduction: tp.Literal["l1", "l2", "signed"] = "l1",
+        verbose: bool = True,
+    ) -> tuple[dict[str, np.ndarray], list]:
+        """Explain predictions with modality-by-time attribution scores.
+
+        Attribution is computed on cached model feature tensors for each
+        modality, not on raw pixels, waveforms, or tokens. The returned arrays
+        are shaped ``(n_segments, n_feature_timesteps)``.
+
+        Parameters
+        ----------
+        events:
+            Events DataFrame, typically produced by
+            :meth:`get_events_dataframe`.
+        method:
+            ``"integrated_gradients"`` for gradient attribution or
+            ``"occlusion"`` for perturbation attribution.
+        modalities:
+            Modalities to explain. Defaults to all available model modalities in
+            each batch.
+        target_vertices:
+            Optional fsaverage vertex/output indices to explain. ``None`` uses
+            the mean prediction over vertices.
+        target_timesteps:
+            Optional output timesteps to explain. ``None`` uses the mean
+            prediction over output timesteps.
+        baselines:
+            Optional scalar, tensor, or per-modality baseline. Defaults to zero
+            feature tensors.
+        n_steps:
+            Number of integrated-gradients interpolation steps.
+        occlusion_window:
+            Number of feature timesteps to replace for each occlusion pass.
+        occlusion_stride:
+            Step size between occlusion windows.
+        reduction:
+            How feature dimensions are reduced to temporal scores.
+        verbose:
+            If ``True`` (default), display a ``tqdm`` progress bar.
+        """
+        if self._model is None:
+            raise RuntimeError(
+                "TribeModel must be instantiated via the .from_pretrained method"
+            )
+        model = self._model
+        loader = self.data.get_loaders(events=events, split_to_build="all")["all"]
+
+        attr_chunks: dict[str, list[np.ndarray]] = {}
+        all_segments = []
+        with torch.enable_grad():
+            for batch in tqdm(loader, disable=not verbose):
+                batch = batch.to(model.device)
+                batch_segments = list(batch.segments)
+                if self.remove_empty_segments:
+                    keep = np.array([len(s.ns_events) > 0 for s in batch_segments])
+                else:
+                    keep = np.ones(len(batch_segments), dtype=bool)
+                if not keep.any():
+                    continue
+
+                scores = model.attribute(
+                    batch,
+                    method=method,
+                    modalities=modalities,
+                    target_vertices=target_vertices,
+                    target_timesteps=target_timesteps,
+                    baselines=baselines,
+                    n_steps=n_steps,
+                    occlusion_window=occlusion_window,
+                    occlusion_stride=occlusion_stride,
+                    reduction=reduction,
+                )
+                keep_tensor = torch.as_tensor(keep, device=model.device)
+                for name, values in scores.items():
+                    attr_chunks.setdefault(name, []).append(
+                        values[keep_tensor].detach().cpu().numpy()
+                    )
+                all_segments.extend(
+                    segment
+                    for segment, should_keep in zip(batch_segments, keep)
+                    if should_keep
+                )
+
+        attributions = {
+            name: np.concatenate(chunks, axis=0)
+            for name, chunks in attr_chunks.items()
+            if chunks
+        }
+        return attributions, all_segments

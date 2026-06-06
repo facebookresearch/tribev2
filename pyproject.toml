@@ -14,6 +14,9 @@ authors = [{name = "Meta Platforms, Inc."}]
 dependencies = [
   "neuralset==0.0.2",
   "neuraltrain==0.0.2",
+  # neuralset 0.0.2 references exca.steps.base.NoValue, which exca removed in
+  # 0.5.26 (moved to exca.steps.identity). Cap exca until neuralset is updated.
+  "exca>=0.5.20,<0.5.26",
   "torch>=2.5.1,<2.7",
   "numpy==2.2.6",
   "torchvision>=0.20,<0.22",
@@ -62,6 +65,9 @@ line-length = 88
 
 [tool.isort]
 profile = "black"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
 
 [tool.setuptools.packages.find]
 include = ["tribe*"]

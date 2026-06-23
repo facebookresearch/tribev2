@@ -15,10 +15,11 @@ import pandas as pd
 import pydantic
 import requests
 import torch
-import yaml
 from einops import rearrange
-from exca import ConfDict, TaskInfra
+from exca import TaskInfra
 from tqdm import tqdm
+
+from tribev2.config_utils import load_config
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -201,8 +202,7 @@ class TribeModel(TribeExperiment):
             repo_id = str(checkpoint_dir)
             config_path = hf_hub_download(repo_id, "config.yaml")
             ckpt_path = hf_hub_download(repo_id, checkpoint_name)
-        with open(config_path, "r") as f:
-            config = ConfDict(yaml.load(f, Loader=yaml.UnsafeLoader))
+        config = load_config(config_path)
         for modality in ["text", "audio", "video"]:
             config[f"data.{modality}_feature.infra.folder"] = cache_folder
             config[f"data.{modality}_feature.infra.cluster"] = cluster

@@ -16,7 +16,7 @@ dependencies = [
   "neuraltrain==0.0.2",
   "exca==0.5.20",
   "torch>=2.5.1,<2.7",
-  "numpy==2.2.6",
+  "numpy>=2.0,<3",
   "torchvision>=0.20,<0.22",
   "x_transformers==1.27.20",
   "einops",
@@ -27,7 +27,6 @@ dependencies = [
   "langdetect",
   "spacy",
   "soundfile",
-  "pip",
   "Levenshtein",
   "julius",
   "transformers"

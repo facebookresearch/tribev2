@@ -202,7 +202,7 @@ class ExtractWordsFromAudio(EventsTransform):
                 transcript.loc[:, k] = v
             transcript["type"] = "Word"
             transcript["language"] = self.language
-            transcript["start"] += audio_event.start + audio_event.offset
+            transcript["start"] += audio_event.start - audio_event.offset
             all_transcripts.append(transcript)
 
         if all_transcripts:

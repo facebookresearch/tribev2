@@ -16,7 +16,7 @@ dependencies = [
   "neuraltrain==0.0.2",
   "exca==0.5.20",
   "torch>=2.5.1,<2.7",
-  "numpy==2.2.6",
+  "numpy>=2.2.6,<3.0",
   "torchvision>=0.20,<0.22",
   "x_transformers==1.27.20",
   "einops",
@@ -27,10 +27,13 @@ dependencies = [
   "langdetect",
   "spacy",
   "soundfile",
-  "pip",
   "Levenshtein",
   "julius",
-  "transformers"
+  "transformers>=4.40.0",
+  "pandas>=2.2.0",
+  "pydantic>=2.5.0",
+  "requests>=2.31.0",
+  "tqdm>=4.66.0",
 ]
 
 [project.urls]
@@ -50,12 +53,31 @@ Repository = "https://github.com/facebookresearch/tribev2"
   ]
   training = [
     "nibabel",
-    "torchmetrics",
-    "wandb",
-    "lightning",  
+    "torchmetrics>=1.0.0",
+    "wandb>=0.16.0",
+    "lightning>=2.5.0",
   ]
   test = [
     "pytest",
+    "pytest-cov",
+  ]
+  transcription = [
+    "uvx",
+  ]
+  datasets = [
+    "datalad>=0.19.5",
+    "openneuro-py",
+    "nltk==3.8.1",
+    "nltk_contrib @ git+https://github.com/nltk/nltk_contrib.git@683961c53f0c122b90fe2d039fe795e0a2b3e997",
+  ]
+  demo = [
+    "gtts",
+    "langdetect",
+    "spacy",
+    "soundfile",
+  ]
+  all = [
+    "tribev2[plotting,training,test,transcription,datasets,demo]",
   ]
 
 [tool.black]

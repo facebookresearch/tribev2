@@ -31,6 +31,22 @@ print(preds.shape)  # (n_timesteps, n_vertices)
 Predictions are for the "average" subject (see paper for details) and live on the **fsaverage5** cortical mesh (~20k vertices).
 They are offset by 5 seconds in the past, in order to compensate for the hemodynamic lag.
 
+Explain a prediction with modality-by-time attribution scores:
+
+```python
+attrs, segments = model.attribute(
+    events=df,
+    method="integrated_gradients",
+    target_vertices=[1234, 5678],
+    n_steps=16,
+)
+print(attrs["text"].shape)  # (n_segments, n_feature_timesteps)
+```
+
+Attribution runs on the cached text/audio/video feature timelines consumed by
+the encoder. Use `method="occlusion"` to replace temporal windows with a
+baseline and measure the prediction drop.
+
 You can also pass `text_path` or `audio_path` to `model.get_events_dataframe` — text is automatically converted to speech and transcribed to obtain word-level timings.
 
 For a full walkthrough with brain visualizations, see the [Colab demo notebook](https://colab.research.google.com/github/facebookresearch/tribev2/blob/main/tribe_demo.ipynb).

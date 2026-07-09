@@ -15,6 +15,8 @@ from neuraltrain.models.common import Mlp, SubjectLayers, SubjectLayersModel
 from neuraltrain.models.transformer import TransformerEncoder
 from torch import nn
 
+from .attribution import integrated_gradients_attribution, occlusion_attribution
+
 logger = logging.getLogger(__name__)
 
 
@@ -232,3 +234,61 @@ class FmriEncoderModel(nn.Module):
             x = x + self.subject_embed(subject_id)
         x = self.encoder(x)
         return x
+
+    def attribute(
+        self,
+        batch: SegmentData,
+        method: tp.Literal[
+            "integrated_gradients", "occlusion"
+        ] = "integrated_gradients",
+        modalities: tp.Sequence[str] | None = None,
+        target_vertices: int | slice | tp.Sequence[int] | torch.Tensor | None = None,
+        target_timesteps: int | slice | tp.Sequence[int] | torch.Tensor | None = None,
+        baselines: dict[str, torch.Tensor | float] | torch.Tensor | float | None = None,
+        n_steps: int = 32,
+        occlusion_window: int = 1,
+        occlusion_stride: int = 1,
+        reduction: tp.Literal["l1", "l2", "signed"] = "l1",
+        pool_outputs: bool = True,
+        eval_mode: bool = True,
+    ) -> dict[str, torch.Tensor]:
+        """Attribute selected fMRI outputs to modality feature timelines.
+
+        The returned dictionary maps each modality to a ``(batch, time)`` tensor.
+        Integrated gradients uses feature tensors as the attribution inputs;
+        occlusion replaces temporal windows with the baseline and measures the
+        selected output change.
+        """
+        if modalities is None:
+            modalities = [
+                modality
+                for modality in self.feature_dims
+                if modality in batch.data and modality in self.projectors
+            ]
+        if method == "integrated_gradients":
+            return integrated_gradients_attribution(
+                self,
+                batch,
+                modalities=modalities,
+                target_vertices=target_vertices,
+                target_timesteps=target_timesteps,
+                baselines=baselines,
+                n_steps=n_steps,
+                reduction=reduction,
+                pool_outputs=pool_outputs,
+                eval_mode=eval_mode,
+            )
+        if method == "occlusion":
+            return occlusion_attribution(
+                self,
+                batch,
+                modalities=modalities,
+                target_vertices=target_vertices,
+                target_timesteps=target_timesteps,
+                baselines=baselines,
+                window=occlusion_window,
+                stride=occlusion_stride,
+                pool_outputs=pool_outputs,
+                eval_mode=eval_mode,
+            )
+        raise ValueError(f"Unknown attribution method: {method}")

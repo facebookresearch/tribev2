@@ -207,6 +207,12 @@ class TribeModel(TribeExperiment):
             config[f"data.{modality}_feature.infra.folder"] = cache_folder
             config[f"data.{modality}_feature.infra.cluster"] = cluster
 
+        # The released config pins feature extractors to CUDA; move them to the
+        # resolved device so CPU/MPS-only machines don't crash on `.to("cuda")`.
+        for key in list(config.flat().keys()):
+            if key.split(".")[-1] == "device" and config[key] == "cuda":
+                config[key] = device
+
         for param in [
             "infra.workdir",
             "data.study.infra_timelines",

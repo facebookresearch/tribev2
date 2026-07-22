@@ -65,11 +65,14 @@ class BrainModule(pl.LightningModule):
 
         y_pred_flat = rearrange(y_pred, "b d t -> (b t) d")
         y_true_flat = rearrange(y_true, "b d t -> (b t) d")
+        bad_samples = None
         if not self.config["data.stride_drop_incomplete"]:
             bad_indices = (y_true_flat == 0).all(dim=1)
             y_pred_flat = y_pred_flat[~bad_indices]
             y_true_flat = y_true_flat[~bad_indices]
             subject_ids_flat = subject_ids_flat[~bad_indices]
+            # sample-level mask for retrieval metrics (B,): True where entire segment is zero
+            bad_samples = (y_true == 0).all(dim=1).all(dim=1)
 
         loss = self.loss(y_pred_flat, y_true_flat).mean()
         log_kwargs = {
@@ -93,7 +96,12 @@ class BrainModule(pl.LightningModule):
                     metric.update(y_pred_flat, y_true_flat, groups=subject_ids_flat)
                 else:
                     if "retrieval" in metric_name:
-                        metric.update(y_pred.mean(dim=-1), y_true.mean(dim=-1))
+                        y_pred_ret = y_pred.mean(dim=-1)
+                        y_true_ret = y_true.mean(dim=-1)
+                        if bad_samples is not None:
+                            y_pred_ret = y_pred_ret[~bad_samples]
+                            y_true_ret = y_true_ret[~bad_samples]
+                        metric.update(y_pred_ret, y_true_ret)
                     else:
                         metric.update(y_pred_flat, y_true_flat)
                     self.log(

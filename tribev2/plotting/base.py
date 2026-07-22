@@ -376,13 +376,16 @@ class BasePlotBrain(pydantic.BaseModel):
 
         TEXT_KEY, SOUND_KEY, VIDEO_KEY = "Text", "Audio", "Video"
 
+        # Audio is optional (e.g., silent screen recordings produce no audio).
         audio = get_audio(
             segments[0], stop_offset=(len(segments) - 1) * segments[0].duration
         )
-        soundarray = audio.to_soundarray().mean(axis=1)
-        axes[SOUND_KEY].plot(soundarray, color="k")
-        axes[SOUND_KEY].set_xlim(0, len(soundarray))
-        axes[SOUND_KEY].axis("off")
+        if audio is not None:
+            soundarray = audio.to_soundarray().mean(axis=1)
+            axes[SOUND_KEY].plot(soundarray, color="k")
+            axes[SOUND_KEY].set_xlim(0, len(soundarray))
+        if SOUND_KEY in axes:
+            axes[SOUND_KEY].axis("off")
         axes[TEXT_KEY].axis("off")
         full_start, full_duration = (
             segments[0].start,
@@ -411,22 +414,24 @@ class BasePlotBrain(pydantic.BaseModel):
                 ax.set_xlim(-margin, img.shape[1] + margin)
                 ax.set_ylim(img.shape[0] + margin, -margin)
                 ax.axis("off")
+            # Text/words are optional (silent or non-speech clips have no word events).
             events = segment.events
-            words = events[events.type == "Word"]
-            for word in words.itertuples():
-                if word.start < full_start:
-                    continue
-                axes[TEXT_KEY].text(
-                    (word.start - full_start) / full_duration,
-                    0.5,
-                    word.text,
-                    color="k",
-                    transform=axes[TEXT_KEY].transAxes,
-                    ha="center",
-                    va="center",
-                    rotation=45,
-                    fontsize=10,
-                )
+            if events is not None and "type" in events.columns:
+                words = events[events.type == "Word"]
+                for word in words.itertuples():
+                    if word.start < full_start:
+                        continue
+                    axes[TEXT_KEY].text(
+                        (word.start - full_start) / full_duration,
+                        0.5,
+                        word.text,
+                        color="k",
+                        transform=axes[TEXT_KEY].transAxes,
+                        ha="center",
+                        va="center",
+                        rotation=45,
+                        fontsize=10,
+                    )
 
     def plot_timesteps_mp4(
         self,

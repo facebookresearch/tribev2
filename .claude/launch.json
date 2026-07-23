@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "Creative Analyzer (app.py)",
+      "runtimeExecutable": "/Users/anilpandit/tribe_env/bin/streamlit",
+      "runtimeArgs": ["run", "app.py", "--server.port=8501"],
+      "port": 8501
+    },
+    {
+      "name": "Demo App (demo_app.py)",
+      "runtimeExecutable": "/Users/anilpandit/tribe_env/bin/streamlit",
+      "runtimeArgs": ["run", "demo_app.py", "--server.port=8502"],
+      "port": 8502
+    }
+  ]
+}

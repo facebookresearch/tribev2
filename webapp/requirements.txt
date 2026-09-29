@@ -1,0 +1,3 @@
+# Web-app dependencies. TRIBE v2 itself is installed from the repo root:
+#   pip install -e ".[plotting]"
+streamlit>=1.55

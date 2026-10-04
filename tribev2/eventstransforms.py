@@ -5,7 +5,6 @@
 # LICENSE file in the root directory of this source tree.
 
 import contextlib
-import copy
 import logging
 import os
 import typing as tp
@@ -186,7 +185,18 @@ class ExtractWordsFromAudio(EventsTransform):
             transcripts[str(wav_filename)] = transcript
         all_transcripts = []
         for audio_event in audio_events.itertuples():
-            transcript = copy.deepcopy(transcripts[audio_event.filepath])
+            transcript = transcripts[audio_event.filepath]
+            if len(transcript) == 0:
+                continue
+            # Word times are measured from the start of the WAV file, and ChunkEvents
+            # can give several audio events the same file with different offsets.
+            # Keep only the words inside this event's part of the file, then move
+            # them to its place on the timeline.
+            offset = audio_event.offset
+            in_event = (transcript["start"] >= offset) & (
+                transcript["start"] < offset + audio_event.duration
+            )
+            transcript = transcript.loc[in_event].copy()
             if len(transcript) == 0:
                 continue
             for k, v in audio_event._asdict().items():
@@ -202,7 +212,7 @@ class ExtractWordsFromAudio(EventsTransform):
                 transcript.loc[:, k] = v
             transcript["type"] = "Word"
             transcript["language"] = self.language
-            transcript["start"] += audio_event.start + audio_event.offset
+            transcript["start"] += audio_event.start - audio_event.offset
             all_transcripts.append(transcript)
 
         if all_transcripts:

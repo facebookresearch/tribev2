@@ -104,19 +104,17 @@ class BrainModule(pl.LightningModule):
         return loss, y_pred.detach().cpu(), y_true.detach().cpu()
 
     def on_val_or_test_epoch_end(self, step_name: str) -> None:
+        # In average_subjects mode the subject mapping is set to None, so fall
+        # back to the numeric group id when no subject name is available.
+        mapping = self.config["data.subject_id.predefined_mapping"] or {}
+        subject_id_to_name = {v: k for k, v in mapping.items()}
         for metric_name, metric in self.metrics.items():
             if metric_name.startswith(step_name):
                 if "grouped" in metric.__class__.__name__.lower():
-                    subject_id_to_name = {
-                        v: k
-                        for k, v in self.config[
-                            "data.subject_id.predefined_mapping"
-                        ].items()
-                    }
-                    metric_dict = {
-                        metric_name + "/" + subject_id_to_name[int(k)]: v
-                        for k, v in metric.compute().items()
-                    }
+                    metric_dict = {}
+                    for k, v in metric.compute().items():
+                        name = subject_id_to_name.get(int(k), int(k))
+                        metric_dict[f"{metric_name}/{name}"] = v
                     self.log_dict(metric_dict)
                     metric.reset()
 
